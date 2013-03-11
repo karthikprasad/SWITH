@@ -24,3 +24,5 @@ ISSUES:
 TODO:
 	1. obtain javadocs in nquads format
 	2. obtain dbpedia from km
+
+The code follows pep8 standard and convention
