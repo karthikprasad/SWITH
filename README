@@ -1,0 +1,26 @@
+interface.py
+=============
+ISSUUES:
+	1. unable to differentiate between BNode and Literal in _termify_object
+	2. triples and quads do not return language information now
+
+TODO:
+	1. may have to bring in a wrapper for rdflib.term
+	2. may have to import urllib for uri encoding
+
+
+kappa.py
+=========
+ISSUES:
+
+TODO:
+
+
+
+data extraction
+================
+ISSUES:
+
+TODO:
+	1. obtain javadocs in nquads format
+	2. obtain dbpedia from km

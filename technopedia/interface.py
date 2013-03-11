@@ -1,17 +1,13 @@
 import simplejson
 import rfc3987 as iri
-# may have to import urllib for uri encoding
 
 import rdflib as rb
-
-## right now, triples and quads doesnt return language information
-## unable to differentiate between BNode and Literal in _termify_object
 
 class Technopedia:
     """
     A interface to access the technopedia dataset which is loaded on a mysql database.
     Provides the results in python format for use by other python applications.
-    Also provides the results in JSON format
+    Also provides the results in JSON format.
     """
 
     def __init__(self, id=None, conn_str=None):
