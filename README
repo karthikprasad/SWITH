@@ -2,6 +2,7 @@ interface.py
 =============
 TODO:
 	1. may have to import urllib for uri encoding
+	2. include technopedia.query() ?
 
 
 DONE:
