@@ -1,28 +1,20 @@
 interface.py
 =============
-ISSUUES:
-	1. unable to differentiate between BNode and Literal in _termify_object
-	2. triples and quads do not return language information now
-	3. sparql querying on nquads doesnt work. owing to issue#167: https://github.com/RDFLib/rdflib/issues/167
-
 TODO:
-	1. may have to bring in a wrapper for rdflib.term
-	2. may have to import urllib for uri encoding
-	3. try solving the sparql'ing problem
+	1. may have to import urllib for uri encoding
 
+
+DONE:
+	1. issue
 
 kappa.py
 =========
-ISSUES:
-
 TODO:
 
 
 
 data extraction
 ================
-ISSUES:
-
 TODO:
 	1. obtain javadocs in nquads format
 	2. obtain dbpedia from km
