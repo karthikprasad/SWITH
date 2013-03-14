@@ -164,9 +164,217 @@ class Technopedia:
 
 
 
+    def predicates(self, subject=None, object=None, format="python"):
+        """
+        List of predicates for given subject and/or object.
 
-#########################################################################################
-########################################################################################
+        @param:
+            subject :: as string
+            object :: as string
+        If none given, all predicates will be returned
+
+        @return:
+            a python dictionary when format="python" (default)
+            JSON object when format="json"
+
+            The return value is of the form:
+                {
+                  "responsetype": "predicates",
+                  "subject": "subject_value",
+                  "object": "object_value",
+                  "response": [list of predicates in str format]
+                }
+
+        """
+        ##convert the arguments to suitable rdflib terms
+        t_subject = Technopedia._termify_subject(subject)
+        t_object = Technopedia._termify_object(object)
+
+        bindings = {}
+
+        # if object is a literal (and hence not None)
+        ## takes care when the user doesnt give language info is not given
+        if Technopedia._is_literal(t_object) and \
+            t_object.language is None and t_object.datatype is None:
+
+                if t_subject is not None:
+                    bindings["?s"] = t_subject
+                # get only the name part of the literal  in unicode
+                str_t_object = t_object.encode("unicode-escape", "ignore")
+                # sparql query
+                # use regex to find pattern when lang is unknown
+                q = ('select distinct ?p'
+                        ' where {graph ?g {?s ?p ?o .'
+                        ' filter regex(?o, "'+ str_t_object +'")}}')
+
+        else:  # when object is bnode or uri or complete litearl info
+            if t_subject is not None:
+                bindings["?s"] = t_predicate
+            if t_object is not None:
+                bindings["?o"] = t_object
+            # sparql query
+            q = ('select distinct ?p'
+                    ' where {graph ?g {?s ?p ?o .}}')
+
+        # obtain tuple generator. first element of each tuple is a predicate
+        gen = self._sparql_query(q, initBindings=bindings)
+
+        # make a list of string subjects
+        predicates_list = [Technopedia._stringify(p[0]) for p in gen]
+        #create a response object
+        dic = {
+                "responsetype": "predicates",
+                "subject": subject,
+                "object": object,
+                "response": predicates_list
+              }
+
+        #return in expected format
+        if format == "python":
+            return dic
+        elif format == "json":
+            return simplejson.dumps(dic)
+
+
+
+    def objects(self, subject=None, predicate=None, format="python"):
+        """
+        List of subjects for given predicate and/or object.
+
+        @param:
+            subject :: as string
+            predicate :: as string
+        If none given, all objects will be returned
+
+        @return:
+            a python dictionary when format="python" (default)
+            JSON object when format="json"
+
+            The return value is of the form:
+                {
+                  "responsetype": "objects",
+                  "subject": "subject_value",
+                  "predicate": "predicate_value",
+                  "response": [list of objects in str format]
+                }
+
+        """
+        ##convert the arguments to suitable rdflib terms
+        t_subject = Technopedia._termify_object(subject)
+        t_predicate = Technopedia._termify_predicate(predicate)
+
+        bindings = {}
+        if t_subject is not None:
+            bindings["?s"] = t_subject
+        if t_predicate is not None:
+            bindings["?p"] = t_predicate
+        # sparql query
+        q = ('select distinct ?o'
+                ' where {graph ?g {?s ?p ?o .}}')
+
+        # obtain tuple generator. first element of each tuple is an object
+        gen = self._sparql_query(q, initBindings=bindings)
+
+        # make a list of string subjects
+        objects_list = [Technopedia._stringify(o[0]) for o in gen]
+        #create a response object
+        dic = {
+                "responsetype": "objects",
+                "subject": subject,
+                "predicate": predicate,
+                "response": objects_list
+              }
+
+        #return in expected format
+        if format == "python":
+            return dic
+        elif format == "json":
+            return simplejson.dumps(dic)
+
+
+
+    def contexts(self, subject=None, predicate=None, object=None, format="python"):
+        """
+        List of contexts in which given subject and/or predicate and/or object. appear
+
+        @param:
+            subject :: as string
+            predicate :: as string
+            object :: as string
+        If none given, all contexts will be returned
+
+        @return:
+            a python dictionary when format="python" (default)
+            JSON object when format="json"
+
+            The return value is of the form:
+                {
+                  "responsetype": "contexts",
+                  "subject": "subject_value",
+                  "object": "object_value",
+                  "predicate": "predicate_value",
+                  "response": [list of contexts in str format]
+                }
+
+        """
+        ##convert the arguments to suitable rdflib terms
+        t_subject = Technopedia._termify_object(subject)
+        t_predicate = Technopedia._termify_predicate(predicate)
+        t_object = Technopedia._termify_object(object)
+
+        bindings = {}
+
+        # if object is a literal (and hence not None)
+        ## takes care when the user doesnt give language info is not given
+        if Technopedia._is_literal(t_object) and \
+            t_object.language is None and t_object.datatype is None:
+                if t_subject is not None:
+                    bindings["?s"] = t_subject
+                if t_predicate is not None:
+                    bindings["?p"] = t_predicate
+                # get only the name part of the literal  in unicode
+                str_t_object = t_object.encode("unicode-escape", "ignore")
+                # sparql query
+                # use regex to find pattern when lang is unknown
+                q = ('select distinct ?g'
+                        ' where {graph ?g {?s ?p ?o .'
+                        ' filter regex(?o, "'+ str_t_object +'")}}')
+
+        else:  # when object is bnode or uri or complete litearl info
+            if t_subject is not None:
+                bindings["?s"] = t_subject
+            if t_predicate is not None:
+                bindings["?p"] = t_predicate
+            if t_object is not None:
+                bindings["?o"] = t_object
+            # sparql query
+            q = ('select distinct ?g'
+                    ' where {graph ?g {?s ?p ?o .}}')
+
+        # obtain tuple generator. first element of each tuple is a subj
+        gen = self._sparql_query(q, initBindings=bindings)
+
+        # make a list of string subjects
+        contexts_list = [Technopedia._stringify(c[0]) for c in gen]
+        #create a response object
+        dic = {
+                "responsetype": "contexts",
+                "subject": subject,
+                "object": object,
+                "predicate": predicate,
+                "response": contexts_list
+              }
+
+        #return in expected format
+        if format == "python":
+            return dic
+        elif format == "json":
+            return simplejson.dumps(dic)
+
+
+
+#############################################################################
+############################################################################
 
 
     @staticmethod
@@ -270,7 +478,7 @@ class Technopedia:
             return False
         # else if match occurs,
         string = string[2:]  # remove _: from the string
-        return rb.term.BNode(string.decode("unicode-escape"))  # in unicode encoding        
+        return rb.term.BNode(string.decode("unicode-escape"))       
 
 
 
@@ -346,7 +554,7 @@ class Technopedia:
         elif Technopedia._is_literal(term):
             opstring = term.encode("unicode-escape")
             if term.language is not None:
-                opstring += "\""+opstring+"\"" + "@" + term.language
+                opstring = "\""+opstring+"\"" + "@" + term.language
             if term.datatype is not None:
                 opstring += opstring + "^^" + term.language
         return opstring
@@ -369,45 +577,37 @@ class Technopedia:
         return prefixed_res
 
 
+
+
 class ParseError(Exception):
     pass
+
+
 
 class SparqlError(Exception):
     pass
 
+
+
 if __name__ == "__main__":
     g = Technopedia("test_nq")
-
-    #print g.subjects()
-    #print
-    #print
+    '''
+    print g.subjects()
+    print
+    print
     s = "Alice"
-    #print Technopedia._make_uriref(s)
-    #print Technopedia._make_bnode(s)
-    #print Technopedia._make_literal(s)
     print g.subjects(object=s)
     print
     print
     s = '"Alice"@en'
-    #print Technopedia._make_uriref(s)
-    #print Technopedia._make_bnode(s)
-    #print Technopedia._make_literal(s)
     print g.subjects(object=s)
     print
     print
     s = '_:N54080b9b88ce4d52be67be8d0bfbb008'
-    #print Technopedia._make_uriref(s)
-    #print Technopedia._make_bnode(s)
-    #print Technopedia._make_literal(s)
     print g.subjects(object=s)
     print
     print
     s = '"\u0E0B\u0E34\u0E01\u0E27\u0E34\u0E19"@th'
-    #print s.decode("unicode-escape").encode("unicode-escape")
-    #print Technopedia._make_uriref(s)
-    #print Technopedia._make_bnode(s)
-    #print Technopedia._make_literal(s)
-    #print Technopedia._termify_object(s)
     print g.subjects(object=s)
     print
     print
@@ -417,3 +617,51 @@ if __name__ == "__main__":
     print
     s = "Bob"
     print g.subjects(object=s)
+    print
+    print
+    '''
+
+    '''
+    print g.predicates()
+    print
+    print
+    s = "Alice"
+    print g.predicates(object=s)
+    print
+    print
+    s = '"Alice"@en'
+    print g.predicates(object=s)
+    print
+    print
+    s = '_:N54080b9b88ce4d52be67be8d0bfbb008'
+    print g.predicates(object=s)
+    print
+    print
+    s = '"\u0E0B\u0E34\u0E01\u0E27\u0E34\u0E19"@th'
+    print g.predicates(object=s)
+    print
+    print
+    s = '"\\u0E0B\\u0E34\\u0E01\\u0E27\\u0E34\\u0E19"@th'
+    print g.predicates(object=s)
+    print
+    print
+    s = "Bob"
+    print g.predicates(object=s)
+    print
+    print
+    '''
+
+    '''
+    print g.objects()
+    print g.objects(subject="http://example.org/alice/foaf.rdf#me")
+    print g.objects(predicate="http://xmlns.com/foaf/0.1/name")
+    '''
+
+    '''
+    print g.contexts()
+    print g.contexts(subject="http://example.org/alice/foaf.rdf#me")
+    print g.contexts(predicate="http://xmlns.com/foaf/0.1/name")
+    print g.contexts(object="Bob")
+    print g.contexts(object="Alic")
+    print g.contexts(object='"Alice"@fr')
+    '''
