@@ -31,12 +31,6 @@ class Technopedia:
         #create store
         self._store = rb.plugin.get("MySQL", rb.store.Store)(self._name)
 
-        #set database connection parameters
-        if connection_str is None:
-            self._conn_str = "host=localhost,user=root,password=root,db=tech_fb"
-        else:
-            self._conn_str = connection_str
-
         #connect store to the database
         self._store.open(self._conn_str)
 
