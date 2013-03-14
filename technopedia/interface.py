@@ -96,7 +96,63 @@ class Technopedia:
 
 
 
+    def subjects(self, predicate=None, object=None, format="python"):
+        """
+        List of subjects for given predicate and/or object.
 
+        @param:
+            predicate :: as string
+            object :: as string
+        If none given, all subjects will be returned
+
+        @return:
+            a python dictionary when format="python" (default)
+            JSON object when format="json"
+
+            The return value is of the form:
+                {
+                  "responsetype": "subjects",
+                  "object": "object_value",
+                  "predicate": "predicate_value",
+                  "response": [list of subjects in str format]
+                }
+
+        """
+        ##convert the arguments to suitable rdflib terms
+        t_predicate = Technopedia._termify_predicate(predicate)
+        t_object = Technopedia._termify_object(object)
+
+        if Technopedia._is_literal(t_object):
+            # sparql query
+            ## takes care when the user doesnt give language info is not given
+            q = ('select distinct ?s'
+                    'where {graph ?g {?s ?p ?o . '
+                        'filter regex(?o, "'+ str(t_object) +'")}}')
+            bindings = {"?p": t_predicate}
+
+        else:  # when object is bnode or uri
+            q = ('select distinct ?s'
+                    'where {graph ?g {?s ?p ?o .}}')
+            bindings = {"?p": t_predicate, "?o": t_object}
+
+        # obtain tuple generator. first element of each tuple is a subj
+        gen = self._sparql_query(q, initBindings=bindings)
+        # make a list of string subjects
+        subjects_list = [Technopedia._stringify(s[0]) for s in gen]
+        
+        #create a response object
+        dic = {
+                "responsetype": "subjects",
+                "object": object,
+                "predicate": prediacte,
+                "response": subjects_list
+              }
+
+        #return in expected format
+        if format == "python":
+            return dic
+        elif format == "json":
+            return simplejson.dumps(dic)
 
 
 
@@ -262,6 +318,22 @@ class Technopedia:
     @staticmethod
     def _is_uriref(term):
         return type(term) is rb.term.URIRef
+
+
+    @staticmethod
+    def _stringify(term):
+        if Technopedia._is_uriref(term):
+            opstring = str(term)
+        elif Technopedia._is_bnode(term):
+            opstring = "_:"+str(term)
+        elif Technopedia._is_literal(term):
+            opstring = str(term)
+            if term.language is not None:
+                opstring += opstring + "@" + term.language
+            if term.datatype is not None:
+                opstring += opstring + "^^" + term.language
+        return opstring
+
 
 
     @staticmethod
