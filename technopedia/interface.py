@@ -14,7 +14,7 @@ class Technopedia:
 
     """
 
-    def __init__(self, id=None, connection_str=None):
+    def __init__(self, id=None, name="tech_fb", connection_str=None):
         """
         The constructor initialises the graph by loading the database onto it.
         @param: 
@@ -23,11 +23,11 @@ class Technopedia:
                         host=address,user=name,password=pass,db=tech_fb
 
         """
-        self._id = None
-        self._name = "tech_fb"
+        self._id = id
+        self._name = name
+        self._conn_str = None
         self._store = None
         self._graph = None
-        self._conn_str = None
 
         #create store
         self._store = rb.plugin.get("MySQL", rb.store.Store)(self._name)
