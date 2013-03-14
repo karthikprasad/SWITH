@@ -330,7 +330,7 @@ class Technopedia:
         elif Technopedia._is_literal(term):
             opstring = str(term)
             if term.language is not None:
-                opstring += opstring + "@" + term.language
+                opstring += "\""+opstring+"\"" + "@" + term.language
             if term.datatype is not None:
                 opstring += opstring + "^^" + term.language
         return opstring
@@ -351,3 +351,8 @@ class Technopedia:
             prefixed_res = res.replace('<sparql:bnode>', '<sparql:bnode>_:')
 
         return prefixed_res
+
+
+
+if __name__ == "__main__":
+    pass
