@@ -1,418 +1,280 @@
-import simplejson
-import rfc3987 as iri
+import re
 
 import rdflib as rb
+import rfc3987 as rfc
+import simplejson
+
 
 class Technopedia:
     """
-    A interface to access the technopedia dataset which is loaded on a mysql database.
-    Provides the results in python format for use by other python applications.
-    Also provides the results in JSON format.
+    An interface to access the technopedia dataset which is loaded 
+    on a mysql database.
+    It creates an rdflib graph and store and initialises them.
+    Effectively wrapping itself around the rdflib objects.
+
     """
 
-    def __init__(self, id=None, conn_str=None):
+    def __init__(self, id=None, connection_str=None):
         """
-        The constructor creates an rdflib graph and store and initialises them.
-        Effectively wrapping itself around the rdflib objects.
+        The constructor initialises the graph by loading the database onto it.
+        @param: 
+            id :: identifier for the Technopedia object
+            conn_str :: To connect to the database in format 
+                        host=address,user=name,password=pass,db=tech_fb
+
         """
         self._id = None
         self._store = None
         self._graph = None
-        self._connection_str = None
+        self._conn_str = None
 
         #create store
         self._store = rb.plugin.get("MySQL", rb.store.Store)("tech_fb")
 
         #set database connection parameters
-        if conn_str is None:
-            self._connection_str = "host=localhost,user=root,password=root,db=tech_fb"
+        if connection_str is None:
+            self._conn_str = "host=localhost,user=root,password=root,db=tech_fb"
         else:
-            self._connection_str = conn_str
+            self._conn_str = connection_str
 
         #connect store to the database
-        self._store.open(self._connection_str)
+        self._store.open(self._conn_str)
 
         #load technopedia to rdflib graph
         self._graph = rb.ConjunctiveGraph(store, identifier=self._id)
 
 
 
-    def triples(self, format="python", subject=None, predicate=None, object_=None, lang="", context=None):
+    def _sparql_query(self, query_string, initNs={}, initBindings={}):
         """
-        List of triples for given(any or all) subject, object, predicate and/or context.
-        Specify lang if the object is literal, default is empty language.
-        If none given, all triples will be returned.
+        Private method to execute a SPARQL query on technopedia.
+        Calls rdflib graph.query() internally.
 
-        Function returns a python dictionary when format="python" and JSON object when format="json"
+        Handles errors and exceptions without exposing rdflib.
 
-        The return value is of the form:
-            {
-              "subject":"subject_value",
-              "predicate":"predicate_value",
-              "object":"object_value",
-              "lang": "language",
-              "context":"context_value",
-              "triples":[list of triples in str format]
-            }
-        """
-
-        ##convert the arguments to suitable rdflib terms
-        t_subject = Technopedia._termify_subject(subject)
-        t_predicate = Technopedia._termify_predicate(predicate)
-        t_object = Technopedia._termify_object(object_, lang)
-        t_context = Technopedia._termify_context(context)
-
-        #obtain a triples generator
-        gen = self._graph.triples((t_subject, t_predicate, t_object), t_context)
-
-        #create a response object
-        dic = {
-                "subject": subject,
-                "predicate": predicate,
-                "object": object_,
-                "lang": lang,
-                "context": context,
-                "triples": [str(i[0])+" "+str(i[1])+" "+str(i[2])+" ." for i in gen]
-              }
-
-        #return in expected format
-        if format == "python":
-            return dic
-        elif format == "json":
-            return simplejson.dumps(dic)
-
-
-
-    def quads(self, format="python", subject=None, predicate=None, object_=None, lang=""):
-        """
-        List of quads for given(any or all) subject, object and/or predicate.
-        Specify lang if the object is literal, default is empty language
-        If none given, all quads will be returned.
-
-        Function returns a python dictionary when format="python" and JSON object when format="json"
-
-        The return value is of the form:
-            {
-              "subject":"subject_value",
-              "predicate":"predicate_value",
-              "object":"object_value",
-              "quads":[list of quads in str format]
-            }
-        """
-
-        ##convert the arguments to suitable rdflib terms
-        t_subject = Technopedia._termify_subject(subject)
-        t_predicate = Technopedia._termify_predicate(predicate)
-        t_object = Technopedia._termify_object(object_, lang)
-
-        #obtain a quads generator
-        gen = self._graph.quads((t_subject, t_predicate, t_object))
-
-        #create a response object
-        dic = {
-                "subject": subject,
-                "predicate": predicate,
-                "object": object_,
-                "lang": lang,
-                "quads": [str(i[0])+" "+str(i[1])+" "+str(i[2])+" "+str(i[3])+" ." for i in gen]
-              }
-
-        #return in expected format
-        if format == "python":
-            return dic
-        elif format == "json":
-            return simplejson.dumps(dic)
-
-
-
-    def subjects(self, format="python", predicate=None, object_=None, lang=""):
-        """
-        List of subjects for given object and/or predicate.
-        Specify lang if the object is literal, default is empty language
-        If none given, all subjects will be returned
-
-        Function returns a python dictionary when format="python" and JSON object when format="json"
-
-        The return value is of the form:
-            {
-              "object":"object_value",
-              "lang":"language",
-              "predicate":"predicate_value",
-              "subjects":[list of subjects in str format]
-            }
-        """
-
-        ##convert the arguments to suitable rdflib terms
-        t_predicate = Technopedia._termify_predicate(predicate)
-        t_object = Technopedia._termify_object(object_, lang)
-
-        #obtain a subjects generator
-        gen = self._graph.subjects(predicate=t_predicate, object=t_object)
-
-        #create a response object
-        dic = {
-                "object": object_,
-                "lang": lang,
-                "predicate": predicate,
-                "subjects": [str(i) for i in gen]
-              }
-
-        #return in expected format
-        if format == "python":
-            return dic
-        elif format == "json":
-            return simplejson.dumps(dic)
-
-
-
-    def predicates(self, format="python", subject=None, object_=None, lang=""):
-        """
-        List of predicates for given subject and/or object.
-        Specify lang if the object is literal, default is empty language
-        If none given, all predicates will be returned
-
-        Function returns a python dictionary when format="python" and JSON object when format="json"
-
-        The return value is of the form:
-            {
-              "subject":"subject_value",
-              "object":"object_value",
-              "lang": "language"
-              "predicates":[list of predicates in str format]
-            }
-        """
-
-        ##convert the arguments to suitable rdflib terms
-        t_subject = Technopedia._termify_subject(subject)
-        t_object = Technopedia._termify_object(object_, lang)
-
-        #obtain a predicates generator
-        gen = self._graph.predicates(subject=t_subject, object=t_object)
-
-        #create a response object
-        dic = {
-                "subject": subject,
-                "object": object_,
-                "lang": lang,
-                "predicates": [str(i) for i in gen]
-              }
-
-        #return in expected format
-        if format == "python":
-            return dic
-        elif format == "json":
-            return simplejson.dumps(dic)
-
-
-    def objects(self, format="python", subject=None, predicate=None):
-        """
-        List of objects for given subject and/or predicate.
-        If none given, all objects will be returned.
-
-        Function returns a python dictionary when format="python" and JSON object when format="json"
-
-        The return value is of the form:
-            {
-              "subject":"subject_value",
-              "predicate":"predicate_value",
-              "objects":[list of objects in str format]
-            }
-        """
-
-        ##convert the arguments to suitable rdflib terms
-        t_subject = Technopedia._termify_subject(subject)
-        t_predicate = Technopedia._termify_predicate(predicate)
-
-        #obtain a objects generator
-        gen = self._graph.objects(subject=t_subject, predicate=t_predicate)
-
-        # make object list
-        obj_list = []
-        for i in gen:
-            lang = ""
-            if type(i) is rb.term.Literal and i.language != "":
-                lang = "@"+i.language
-            obj_list.append(str(i)+lang)
-
-        #create a response object
-        dic = {
-                "subject": subject,
-                "predicate": predicate,
-                "objects": obj_list
-              }
-
-        #return in expected format
-        if format == "python":
-            return dic
-        elif format == "json":
-            return simplejson.dumps(dic)
-
-
-
-    def contexts(self, format="python"):
-        """
-        List of all contexts
-
-        Function returns a python dictionary when format="python" and JSON object when format="json"
-
-        The return value is of the form:
-            {
-              "contexts":[list of contexts in str format]
-            }
-        """
-        dic = {
-                "contexts": [str(i) for i in self._graph.contexts()]
-              }
-
-        #return in expected format
-        if format == "python":
-            return dic
-        elif format == "json":
-            return simplejson.dumps(dic)
-
-
-
-    def literals(self, format="python"):
-        """
-        List of all literals(not uris or metanodes) in technopedia
+        @param: 
+            query_string :: sparql query string
         
-        Function returns a python dictionary when format="python" and JSON object when format="json"
+        @return:
+            SPARQL result as rdflib_sparql.processor.SPARQLResult object.
 
-        The return value is of the form:
-            {
-              "literals":[list of literals in str format]
-            }
         """
-        # obtain objects generator
-        gen = self._graph.objects()
+         try:
+            sparql_result = self._graph.query(query_string, initNs, initBindings)
+        except:
+            # handle No query or wrong query syntax errors
+            sparql_result = "ERROR: query execution failed"
 
-        # make literal list
-        lit_list = []
-        for i in gen:
-            lang = ""
-            if type(i) is rb.term.Literal:
-                if i.language != "":
-                    lang = "@"+i.language
-                lit_list.append(str(i)+lang)
-
-        dic = {
-                "literals": lit_list
-              }
-
-        #return in expected format
-        if format == "python":
-            return dic
-        elif format == "json":
-            return simplejson.dumps(dic)
+        return sparql_result
 
 
 
-    def get_uri(self, name, lang="", any_one=True, name_predicate="http://rdf.freebase.com/ns/type.object.name", format="python"):
+    def query(self, query_string, format="json"):
         """
-        Get the subject uri of the given name(literal) in language 'lang'(default is no lang)
-        Default name_predicate is http://rdf.freebase.com/ns/type.object.name
+        Method to execute a SPARQL query on technopedia.
+        @param: 
+            query_string :: sparql query string
+            format :: format of the spqrql reslut; json or xml
         
-        Return one uri if any_one is True, returns a list of uris otherwise; in python or json format as desired.
+        @return:
+            SPARQL result in xml or json format as required. Default is json.
+
         """
-
-        t_name = Technopedia._termify_object(name, lang)
-        t_name_predicate = Technopedia._termify_predicate(name_predicate)
-
-        # obtain the generator of the subject uris
-        gen = self._graph.subjects(predicate=t_name_predicate, object=t_name)
-
-        # only keep the URI subjects
-        uri_subj = [str(i) for i in gen if type(i) is rb.term.URIRef]
-
-        # decide to return one or more uris
-        if any_one:
-            response = set(uri_subj).pop()
+        # get rdflib_sparql.processor.SPARQLResult object
+        result = self._sparql_query(query_string)
+        
+        try:
+            response = result.serialize(format=format)
+        except:
+            # handle unregistered format Exception
+            response = "ERROR: format not supported"
         else:
-            response = uri_subj
+            #stringify the bnode of sparql result
+            response = Technopedia._stringify_sparql_result(response, format)
 
-        #return in expected format
-        if format == "python":
-            return response
-        elif format == "json":
-            return simplejson.dumps(response)
+        return response
 
 
 
-    def get_name(self, uri, lang="", name_predicate="http://rdf.freebase.com/ns/type.object.name", format="python"):
-        """
-        Get the name of the given uri(subject).
-        Default name_predicate is http://rdf.freebase.com/ns/type.object.name
 
-        Return name in given language(lang) - en is default; in python or json format as specified.
-        """
 
-        t_uri = Technopedia._termify_subject(uri)
-        t_name_predicate = Technopedia._termify_predicate(name_predicate)
 
-        # obtain the generator of the object uris
-        gen = self._graph.objects(subject=t_uri, predicate=t_name_predicate)
 
-        # only keep the literal objects
-        name_list = [str(i) for i in gen if type(i) is rb.term.Literal]
 
-        response = name_list.pop()
-
-        #return in expected format
-        if format == "python":
-            return response
-        elif format == "json":
-            return simplejson.dumps(response)
-
+#########################################################################################
+########################################################################################
 
 
     @staticmethod
-    def _termify_subject(subject):
+    def _termify_subject(subject_str):
         """
-        internal function which returns an appropriate rdflib term for a given string subject
+        internal function which returns an appropriate rdflib term 
+        for a given string subject
 
         """
-        #check if subject is URI or Blank Node
-        try:
-            iri.parse(subject, rule="URI")  # returns error if subject is not URI => subject is Blank node
-            t_subject = rb.term.URIRef(subject)
-        except:
-            t_subject = rb.term.BNode(subject)
-
+        # subject is URI or Blank Node
+        t_subject = (Technopedia._make_uriref(subject_str) or 
+                     Technopedia._make_bnode(subject_str
+                    )
+        if not t_subject:
+             raise ParseError("Subject must be uri or blank node")
         return t_subject
 
 
 
     @staticmethod
-    def _termify_object(object_, lang=""):
+    def _termify_object(object_str):
         """
-        internal function which returns an appropriate rdflib term for a given string object
+        internal function which returns an appropriate rdflib term
+        for a given string object
 
         """
-        #check if object is URI or Literal Node
-        try:
-            iri.parse(object_, rule="URI")  # returns error if object is not URI => object is Literal node
-            t_object = rb.term.URIRef(object_)
-        except:
-            t_object = rb.term.Literal(object_, lang=lang)
-
+        # object is uri or blank node or literal
+        t_object = (Technopedia._make_uriref(object_str) or 
+                    Technopedia._make_bnode(object_str) or 
+                    Technopedia._make_literal(object_str)
+                   )
+        if t_object is False:
+            raise ParseError("Unrecognised object type")
         return t_object
 
 
 
     @staticmethod
-    def _termify_predicate(predicate):
+    def _termify_predicate(predicate_str):
         """
-        internal function which returns an appropriate rdflib term for a given string predicate
+        internal function which returns an appropriate rdflib term 
+        for a given string predicate
 
         """
-        return rb.term.URIRef(predicate)
+        # prediacte is URI
+        t_predicate = Technopedia._make_uriref(predicate_str)
+        if not t_predicate:
+             raise ParseError("Predicate must be uri")
+        return t_predicate
 
 
 
     @staticmethod
-    def _termify_context(context):
+    def _termify_context(context_str):
         """
-        internal function which returns an appropriate rdflib term for a given string context
+        internal function which returns an appropriate rdflib term 
+        for a given string context
 
         """
-        return rb.term.URIRef(context)
+        # context is URI
+        t_context = Technopedia._make_uriref(predicate_str)
+        if not t_context:
+             raise ParseError("Context must be uri")
+        return t_context
+
+
+
+    @staticmethod
+    def _make_uriref(string):
+        """
+        internal function which returns rdflib.term.URIRef if successful;
+        returns False otherwise
+
+        """
+        uri_pattern = rfc.format_patterns()["URI"]
+        match = re.compile(uri_pattern).match(string)
+        if not match:
+            return False
+        return rb.term.URIRef(string.decode("unicode-escape"))        
+
+
+
+    @staticmethod
+    def _make_bnode(string):
+        """
+        internal function which returns rdflib.term.BNode if successful;
+        returns False otherwise
+
+        """
+        bnode_pattern = r'_:([A-Za-z][A-Za-z0-9]*)'
+        match = re.compile(bnode_pattern).match(string)
+        if not match:
+            return False
+        # else if match occurs,
+        string = string[2:]  # remove _: from the string
+        return rb.term.BNode(string.decode())  # in unicode encoding        
+
+
+
+    @staticmethod
+    def _make_literal(string):
+        """
+        internal function which returns rdflib.term.Literal if successful;
+        returns False otherwise
+
+        """
+        # for literal string without other info
+        lit_pattern = r'([^"\\]*(?:\\.[^"\\]*)*)()()'
+
+        # for literal string with other info
+        litinfo_name_pattern = r'"([^"\\]*(?:\\.[^"\\]*)*)"'  # has double quote
+        litinfo_info_pattern = r'(?:@([a-z]+(?:-[a-z0-9]+)*)|\^\^(' + \
+                                rfc.format_patterns()["URI"] + r'))?'
+        litinfo_pattern = litinfo_name_pattern + litinfo_info_pattern
+
+        # try matching both patterns
+        match_lit = re.compile(lit_pattern).match(string)
+        match_litinfo = re.compile(litinfo_pattern).match(string)
+        
+        if match_lit:
+            lit, lang, dtype = match_lit.groups()
+            lit = lit.decode("unicode-escape")  # encoding is unicode
+            lang = None
+            dtype = None
+
+        elif match_litinfo:
+            lit, lang, dtype = match.groups()
+            lit = lit.decode("unicode-escape")  # encoding is unicode
+            
+            if lang:
+                lang = lang.decode()
+            else:
+                lang = None
+            
+            if dtype:
+                dtype = dtype.decode()
+            else:
+                dtype = None
+
+        else:
+            return False
+
+        return rb.term.Literal(lit, lang, dtype)
+
+
+
+    @staticmethod
+    def _is_literal(term):
+        return type(term) is rb.term.Literal
+
+
+    @staticmethod
+    def _is_bnode(term):
+        return type(term) is rb.term.BNode
+
+    
+    @staticmethod
+    def _is_uriref(term):
+        return type(term) is rb.term.URIRef
+
+
+    @staticmethod
+    def _stringify_sparql_result(res, format):
+        """
+        Prefix bnode value with _:
+        Example: N69bdff2a33874675b1b02 => _:N69bdff2a33874675b1b02
+
+        """
+        if format == "json":
+            prefixed_res = res.replace('"type": "bnode", "value": "', 
+                                        '"type": "bnode", "value": "_:')
+        elif format == "xml":
+            prefixed_res = res.replace('<sparql:bnode>', '<sparql:bnode>_:')
+
+        return prefixed_res
