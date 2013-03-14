@@ -120,18 +120,21 @@ class Technopedia:
         bindings = {}
 
         # if object is a literal (and hence not None)
-        if Technopedia._is_literal(t_object):
-            if t_predicate is not None:
-                bindings["?p"] = t_predicate
-            # get only the name part of the literal  in unicode
-            str_t_object = t_object.encode("unicode-escape")
-            # sparql query
-            ## takes care when the user doesnt give language info is not given
-            q = ('select distinct ?s'
-                    ' where {graph ?g {?s ?p ?o .'
-                    ' filter regex(?o, "'+ str_t_object +'")}}')
+        ## takes care when the user doesnt give language info is not given
+        if Technopedia._is_literal(t_object) and \
+            t_object.language is None and t_object.datatype is None:
 
-        else:  # when object is bnode or uri
+                if t_predicate is not None:
+                    bindings["?p"] = t_predicate
+                # get only the name part of the literal  in unicode
+                str_t_object = t_object.encode("unicode-escape", "ignore")
+                # sparql query
+                # use regex to find pattern when lang is unknown
+                q = ('select distinct ?s'
+                        ' where {graph ?g {?s ?p ?o .'
+                        ' filter regex(?o, "'+ str_t_object +'")}}')
+
+        else:  # when object is bnode or uri or complete litearl info
             if t_predicate is not None:
                 bindings["?p"] = t_predicate
             if t_object is not None:
@@ -142,7 +145,7 @@ class Technopedia:
 
         # obtain tuple generator. first element of each tuple is a subj
         gen = self._sparql_query(q, initBindings=bindings)
-        
+
         # make a list of string subjects
         subjects_list = [Technopedia._stringify(s[0]) for s in gen]
         #create a response object
@@ -261,7 +264,7 @@ class Technopedia:
         returns False otherwise
 
         """
-        bnode_pattern = r'_:([A-Za-z][A-Za-z0-9]*)'
+        bnode_pattern = ur'_:([A-Za-z][A-Za-z0-9]*)'
         match = re.compile(bnode_pattern).match(string)
         if not match:
             return False
@@ -279,12 +282,12 @@ class Technopedia:
 
         """
         # for literal string without other info
-        lit_pattern = r'([^"\\]+(?:\\.[^"\\]*)*)'
+        lit_pattern = ur'([^"\\]+(?:\\.[^"\\]*)*)'
 
         # for literal string with other info
-        litinfo_name_pattern = r'"([^"\\]*(?:\\.[^"\\]*)*)"'  # has double quote
-        litinfo_info_pattern = r'(?:@([a-z]+(?:-[a-z0-9]+)*)|\^\^(' + \
-                                rfc.format_patterns()["URI"] + r'))?'
+        litinfo_name_pattern = ur'"([^"\\]*(?:\\.[^"\\]*)*)"'  # has double quote
+        litinfo_info_pattern = ur'(?:@([a-z]+(?:-[a-z0-9]+)*)|\^\^(' + \
+                                rfc.format_patterns()["URI"] + ur'))?'
         litinfo_pattern = litinfo_name_pattern + litinfo_info_pattern
 
         # try matching both patterns
@@ -382,29 +385,35 @@ if __name__ == "__main__":
     #print Technopedia._make_uriref(s)
     #print Technopedia._make_bnode(s)
     #print Technopedia._make_literal(s)
-    #print g.subjects(object=s)
-    #print
-    #print
+    print g.subjects(object=s)
+    print
+    print
     s = '"Alice"@en'
     #print Technopedia._make_uriref(s)
     #print Technopedia._make_bnode(s)
     #print Technopedia._make_literal(s)
-    #print g.subjects(object=s)
-    #print
-    #print
+    print g.subjects(object=s)
+    print
+    print
     s = '_:N54080b9b88ce4d52be67be8d0bfbb008'
     #print Technopedia._make_uriref(s)
     #print Technopedia._make_bnode(s)
     #print Technopedia._make_literal(s)
-    #print g.subjects(object=s)
-    #print
-    #print
+    print g.subjects(object=s)
+    print
+    print
     s = '"\u0E0B\u0E34\u0E01\u0E27\u0E34\u0E19"@th'
     #print s.decode("unicode-escape").encode("unicode-escape")
     #print Technopedia._make_uriref(s)
     #print Technopedia._make_bnode(s)
     #print Technopedia._make_literal(s)
     #print Technopedia._termify_object(s)
-    #print g.subjects(object=s)
+    print g.subjects(object=s)
+    print
+    print
     s = '"\\u0E0B\\u0E34\\u0E01\\u0E27\\u0E34\\u0E19"@th'
+    print g.subjects(object=s)
+    print
+    print
+    s = "Bob"
     print g.subjects(object=s)
