@@ -35,7 +35,7 @@ class Technopedia:
         self._store.open(self._conn_str)
 
         #load technopedia to rdflib graph
-        self._graph = rb.ConjunctiveGraph(store, identifier=self._id)
+        self._graph = rb.ConjunctiveGraph(self._store)
 
 
 
@@ -53,11 +53,12 @@ class Technopedia:
             SPARQL result as rdflib_sparql.processor.SPARQLResult object.
 
         """
-         try:
-            sparql_result = self._graph.query(query_string, initNs, initBindings)
+        try:
+            sparql_result = self._graph.query(query_string, initNs=initNs, 
+                                                initBindings=initBindings)
         except:
             # handle No query or wrong query syntax errors
-            sparql_result = "ERROR: query execution failed"
+            raise SparqlError("query execution failed")
 
         return sparql_result
 
@@ -81,7 +82,7 @@ class Technopedia:
             response = result.serialize(format=format)
         except:
             # handle unregistered format Exception
-            response = "ERROR: format not supported"
+            raise SparqlError("format not supported")
         else:
             #stringify the bnode of sparql result
             response = Technopedia._stringify_sparql_result(response, format)
@@ -116,29 +117,39 @@ class Technopedia:
         t_predicate = Technopedia._termify_predicate(predicate)
         t_object = Technopedia._termify_object(object)
 
+        bindings = {}
+
+        # if object is a literal (and hence not None)
         if Technopedia._is_literal(t_object):
+            if t_predicate is not None:
+                bindings["?p"] = t_predicate
+            # get only the name part of the literal  in unicode
+            str_t_object = t_object.encode("unicode-escape")
             # sparql query
             ## takes care when the user doesnt give language info is not given
             q = ('select distinct ?s'
-                    'where {graph ?g {?s ?p ?o . '
-                        'filter regex(?o, "'+ str(t_object) +'")}}')
-            bindings = {"?p": t_predicate}
+                    ' where {graph ?g {?s ?p ?o .'
+                    ' filter regex(?o, "'+ str_t_object +'")}}')
 
         else:  # when object is bnode or uri
+            if t_predicate is not None:
+                bindings["?p"] = t_predicate
+            if t_object is not None:
+                bindings["?o"] = t_object
+            # sparql query
             q = ('select distinct ?s'
-                    'where {graph ?g {?s ?p ?o .}}')
-            bindings = {"?p": t_predicate, "?o": t_object}
+                    ' where {graph ?g {?s ?p ?o .}}')
 
         # obtain tuple generator. first element of each tuple is a subj
         gen = self._sparql_query(q, initBindings=bindings)
+        
         # make a list of string subjects
         subjects_list = [Technopedia._stringify(s[0]) for s in gen]
-        
         #create a response object
         dic = {
                 "responsetype": "subjects",
                 "object": object,
-                "predicate": prediacte,
+                "predicate": predicate,
                 "response": subjects_list
               }
 
@@ -162,12 +173,14 @@ class Technopedia:
         for a given string subject
 
         """
-        # subject is URI or Blank Node
-        t_subject = (Technopedia._make_uriref(subject_str) or 
-                     Technopedia._make_bnode(subject_str
-                    )
-        if not t_subject:
-             raise ParseError("Subject must be uri or blank node")
+        if subject_str is None:
+            t_subject = None
+        else:  # subject is URI or Blank Node
+            t_subject = (Technopedia._make_uriref(subject_str) or 
+                         Technopedia._make_bnode(subject_str)
+                        )
+            if not t_subject:
+                raise ParseError("Subject must be uri or blank node")
         return t_subject
 
 
@@ -179,13 +192,15 @@ class Technopedia:
         for a given string object
 
         """
-        # object is uri or blank node or literal
-        t_object = (Technopedia._make_uriref(object_str) or 
-                    Technopedia._make_bnode(object_str) or 
-                    Technopedia._make_literal(object_str)
-                   )
-        if t_object is False:
-            raise ParseError("Unrecognised object type")
+        if object_str is None:
+            t_object = None
+        else:  # object is uri or blank node or literal
+            t_object = (Technopedia._make_uriref(object_str) or 
+                        Technopedia._make_bnode(object_str) or 
+                        Technopedia._make_literal(object_str)
+                       )
+            if not t_object:
+                raise ParseError("Unrecognised object type")
         return t_object
 
 
@@ -197,10 +212,12 @@ class Technopedia:
         for a given string predicate
 
         """
-        # prediacte is URI
-        t_predicate = Technopedia._make_uriref(predicate_str)
-        if not t_predicate:
-             raise ParseError("Predicate must be uri")
+        if predicate_str is None:
+            t_predicate = None
+        else:  # prediacte is URI
+            t_predicate = Technopedia._make_uriref(predicate_str)
+            if not t_predicate:
+                 raise ParseError("Predicate must be uri")
         return t_predicate
 
 
@@ -212,10 +229,12 @@ class Technopedia:
         for a given string context
 
         """
-        # context is URI
-        t_context = Technopedia._make_uriref(predicate_str)
-        if not t_context:
-             raise ParseError("Context must be uri")
+        if context_str is None:
+            t_context = None
+        else:  # context is URI
+            t_context = Technopedia._make_uriref(predicate_str)
+            if not t_context:
+                 raise ParseError("Context must be uri")
         return t_context
 
 
@@ -248,7 +267,7 @@ class Technopedia:
             return False
         # else if match occurs,
         string = string[2:]  # remove _: from the string
-        return rb.term.BNode(string.decode())  # in unicode encoding        
+        return rb.term.BNode(string.decode("unicode-escape"))  # in unicode encoding        
 
 
 
@@ -260,7 +279,7 @@ class Technopedia:
 
         """
         # for literal string without other info
-        lit_pattern = r'([^"\\]*(?:\\.[^"\\]*)*)()()'
+        lit_pattern = r'([^"\\]+(?:\\.[^"\\]*)*)'
 
         # for literal string with other info
         litinfo_name_pattern = r'"([^"\\]*(?:\\.[^"\\]*)*)"'  # has double quote
@@ -271,24 +290,24 @@ class Technopedia:
         # try matching both patterns
         match_lit = re.compile(lit_pattern).match(string)
         match_litinfo = re.compile(litinfo_pattern).match(string)
-        
+
         if match_lit:
-            lit, lang, dtype = match_lit.groups()
+            lit = match_lit.groups()[0]
             lit = lit.decode("unicode-escape")  # encoding is unicode
             lang = None
             dtype = None
 
         elif match_litinfo:
-            lit, lang, dtype = match.groups()
+            lit, lang, dtype = match_litinfo.groups()
             lit = lit.decode("unicode-escape")  # encoding is unicode
             
             if lang:
-                lang = lang.decode()
+                lang = lang.decode("unicode-escape")
             else:
                 lang = None
             
             if dtype:
-                dtype = dtype.decode()
+                dtype = dtype.decode("unicode-escape")
             else:
                 dtype = None
 
@@ -316,12 +335,13 @@ class Technopedia:
 
     @staticmethod
     def _stringify(term):
+        opstring = ""
         if Technopedia._is_uriref(term):
-            opstring = str(term)
+            opstring = term.encode("unicode-escape")
         elif Technopedia._is_bnode(term):
-            opstring = "_:"+str(term)
+            opstring = "_:"+term.encode("unicode-escape")
         elif Technopedia._is_literal(term):
-            opstring = str(term)
+            opstring = term.encode("unicode-escape")
             if term.language is not None:
                 opstring += "\""+opstring+"\"" + "@" + term.language
             if term.datatype is not None:
@@ -346,6 +366,45 @@ class Technopedia:
         return prefixed_res
 
 
+class ParseError(Exception):
+    pass
+
+class SparqlError(Exception):
+    pass
 
 if __name__ == "__main__":
-    g = Technopedia("test_nq", "host=localhost,user=root,password=root,db=test_nq")
+    g = Technopedia("test_nq")
+
+    #print g.subjects()
+    #print
+    #print
+    s = "Alice"
+    #print Technopedia._make_uriref(s)
+    #print Technopedia._make_bnode(s)
+    #print Technopedia._make_literal(s)
+    #print g.subjects(object=s)
+    #print
+    #print
+    s = '"Alice"@en'
+    #print Technopedia._make_uriref(s)
+    #print Technopedia._make_bnode(s)
+    #print Technopedia._make_literal(s)
+    #print g.subjects(object=s)
+    #print
+    #print
+    s = '_:N54080b9b88ce4d52be67be8d0bfbb008'
+    #print Technopedia._make_uriref(s)
+    #print Technopedia._make_bnode(s)
+    #print Technopedia._make_literal(s)
+    #print g.subjects(object=s)
+    #print
+    #print
+    s = '"\u0E0B\u0E34\u0E01\u0E27\u0E34\u0E19"@th'
+    #print s.decode("unicode-escape").encode("unicode-escape")
+    #print Technopedia._make_uriref(s)
+    #print Technopedia._make_bnode(s)
+    #print Technopedia._make_literal(s)
+    #print Technopedia._termify_object(s)
+    #print g.subjects(object=s)
+    s = '"\\u0E0B\\u0E34\\u0E01\\u0E27\\u0E34\\u0E19"@th'
+    print g.subjects(object=s)
