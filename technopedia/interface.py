@@ -24,12 +24,13 @@ class Technopedia:
 
         """
         self._id = None
+        self._name = "tech_fb"
         self._store = None
         self._graph = None
         self._conn_str = None
 
         #create store
-        self._store = rb.plugin.get("MySQL", rb.store.Store)("tech_fb")
+        self._store = rb.plugin.get("MySQL", rb.store.Store)(self._name)
 
         #set database connection parameters
         if connection_str is None:
