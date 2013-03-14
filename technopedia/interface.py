@@ -14,7 +14,7 @@ class Technopedia:
 
     """
 
-    def __init__(self, name="tech_fb", id=None, connection_str=None):
+    def __init__(self, name="tech_fb", connection_str="host=localhost,user=root,password=root"):
         """
         The constructor initialises the graph by loading the database onto it.
         @param: 
@@ -23,9 +23,8 @@ class Technopedia:
                         host=address,user=name,password=pass,db=tech_fb
 
         """
-        self._id = id
         self._name = name
-        self._conn_str = None
+        self._conn_str = connection_str+",db="+name
         self._store = None
         self._graph = None
 
@@ -355,4 +354,4 @@ class Technopedia:
 
 
 if __name__ == "__main__":
-    pass
+    g = Technopedia("test_nq", "host=localhost,user=root,password=root,db=test_nq")
