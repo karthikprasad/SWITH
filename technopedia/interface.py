@@ -14,7 +14,7 @@ class Technopedia:
 
     """
 
-    def __init__(self, id=None, name="tech_fb", connection_str=None):
+    def __init__(self, name="tech_fb", id=None, connection_str=None):
         """
         The constructor initialises the graph by loading the database onto it.
         @param: 
