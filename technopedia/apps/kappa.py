@@ -4,7 +4,6 @@ import collections as _coll
 from technopedia import data
 
 #### PRE-PROCESSING FUNCTIONS ####
-# INDEXING GRAPH DATA
 
 def _get_vertex_keyword_index():
 	"""
@@ -94,8 +93,10 @@ def _make_summary_graph():
 	summary_graph.add_node("BNode", cost=_cosr("Bnode"), cursor=[])
 	summary_graph.add_node("Thing", cost=_cosr("Thing"), cursor=[])
 
-	
-
+	triples = data.triples()
+	for row in triples:
+		summary_graph.add_edge(_class_type(row[0]), _class_type(row[1]),
+								key=row[1])
 
 
 
