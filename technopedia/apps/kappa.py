@@ -48,7 +48,7 @@ def _get_vertex_keyword_index():
 
 def _get_edge_keyword_index():
 	"""
-	function which makes a keyword index - a mapping from
+                 function which makes a keyword index - a mapping from
 	keyword to keyword-element-edge(A-edge).
 
 	@return:
@@ -105,16 +105,90 @@ def _get_all_class_nodes():
 
 
 
-def _cost(node):
+def _cost_node(node,summary_graph):
+	"""
+	function which returns the cost associated with the node
+	popularity score: section 5
+	@param:
+		node: node in the summary graph
+		summary_graph: a graph to which the node belongs to
+	@return:
+		a score in the range 0-1
+	"""
+	return 1-(len(_get_all_entity_nodes(node))/(summary_graph.number_of_nodes() +0.0)
+
+	
+	
+def _cost_edge(edge,summary_graph):
 	"""
 	function which returns the cost associated with the node
 
-	one of the scoring(cost) functions from section 5 of the paper
+	popularity score :section 5
 
+	@param:
+	edge: edge from the summary graph
+	summary_graph: a graph to which the edge belongs to
+	@return:
+	a score in the range 0-1
 	"""
-	# to be implemented by aparna
-	return 1
+	e_edge_count = 0
+    adjacent_edges = summary_graph.edges([edge[0],edge[1]])
+    for neighbour_edge in adjacent_edges:
+		if neighbour_edge!= edge:
+			if(_is_enode(neighbour_edge[0]) and _is_enode(neighbour_edge[1])):
+				e_edge_count + = 1
+	return 1-(e_edge_count/(summary_graph.number_of_edges()+0.0))
+				
 
+
+def _cost_subgraph(subgraph,summary_graph):
+	"""
+	function which returns the cost of the subgraph
+	@param:
+	subgraph: the subgraph for which cost needs to be computed
+	summary_graph: the main summary graph
+	@return:
+	a cumilative score
+	"""
+	cumilative_cost = 0.0
+	for node in subgraph.nodes():
+		cumilative_cost = cumilative_cost + _cost_node(node,summary_graph)
+	for edge in subgraph.edges():
+		cumilative_cost = cumilative_cost + _cost_edge(edge,summary_graph)
+		
+	return cumilative_cost
+
+
+def _is_enode(node):
+	"""
+	function to determine if the node is an enode
+	@param:
+	node : a node whose type should be checked to be E-node
+	
+	@return:
+        boolean value
+    """
+	if data.Term.type(node) == "BNode":
+		return True
+	elif data.Term.type(node) == "URI" and node in _summary_graph.nodes():
+		return True
+	return False
+	
+				
+def _get_all_entity_nodes(cnode=None):
+	"""
+    function to obtain entity nodes of given class node(C-vertex)
+    @param:
+        cnode::as string
+
+    @return:
+        list of entity nodes to which given cnode belongs.
+    """
+    type_predicate = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+
+    entity_nodes = data.subjects(object=cnode, predicate=type_predicate)["response"]
+
+    return entity_nodes
 
 
 def _class_type(enode=None):
@@ -146,3 +220,9 @@ def _class_type(enode=None):
 # PREPROCESSED DATASTRUCTURES
 _keyword_index = _make_keyword_index()
 _summary_graph = _make_summary_graph()
+
+
+if __name__ == "__main__":
+        print _get_all_entity_nodes(cnode="Android")
+
+
