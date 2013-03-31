@@ -44,7 +44,7 @@ def _is_enode(node):
     return False
 
 
-def is_redge(edge):
+def _is_redge(edge):
     """
     function to determine if the edge is an R-edge
     @param:
@@ -252,10 +252,10 @@ def _get_edge_cost(edge, graph, total_number_of_edges):
     for neighbour_edge in adjacent_edges:
         if _is_redge(neighbour_edge):
             eedge_count + = 1
-    return 1 - eedge_count/(total_number_of_edges()+0.0)
+    return 1 - eedge_count/(total_number_of_edges+0.0)
 
 
-def _cost_subgraph(subgraph,summary_graph):
+def _get_subgraph_cost(subgraph,summary_graph):
     """
     function which returns the cost of the subgraph
     @param:
@@ -265,11 +265,12 @@ def _cost_subgraph(subgraph,summary_graph):
         a cumilative score
     """
     cumilative_cost = 0.0
+    total_number_of_nodes = summary_graph.number_of_nodes()
+    total_number_of_edges = summary_graph.number_of_edges()
     for node in subgraph.nodes():
-        cumilative_cost = cumilative_cost + _cost_node(node,summary_graph)
-    for edge in subgraph.edges():
-        cumilative_cost = cumilative_cost + _cost_edge(edge,summary_graph)
-        
+        cumilative_cost += _get_node_cost(node, summary_graph, total_number_of_nodes)
+    for edge in subgraph.edges(keys=True):
+        cumilative_cost += _get_edge_cost(edge, summary_graph, total_number_of_edges)
     return cumilative_cost
 
 
