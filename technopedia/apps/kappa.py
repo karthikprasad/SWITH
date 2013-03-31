@@ -48,7 +48,7 @@ def _get_vertex_keyword_index():
 
 def _get_edge_keyword_index():
 	"""
-	function which makes a keyword index - a mapping from
+                 function which makes a keyword index - a mapping from
 	keyword to keyword-element-edge(A-edge).
 
 	@return:
@@ -105,16 +105,73 @@ def _get_all_class_nodes():
 
 
 
-def _cost(node):
+def _cost(node,summary_graph):
 	"""
 	function which returns the cost associated with the node
-
-	one of the scoring(cost) functions from section 5 of the paper
-
+	popularity score: section 5
+	@param:
+		node: node in the summary graph
+		summary_graph: a graph to which the node belongs to
+	@return:
+		a score in the range 0-1
 	"""
-	# to be implemented by aparna
-	return 1
+	return 1-(len(get_all_entity_nodes(node))/(ne.number_of_nodes(summary_graph) +0.0)
 
+def _cost(edge,summary_graph):
+                  
+                """
+                function which returns the cost associated with the node
+
+                popularity score :section 5
+
+                @param:
+                        edge: edge from the summary graph
+						summary_graph: a graph to which the edge belongs to
+                @return:
+                        a score in the range 0-1
+                """
+                e_edge_count = 0
+                adjacent_edges = nx.edges(summary_graph,[edge[0],edge[1]])
+                for edge in adjacent_edges:
+                        if(_is_enode(edge[0]) and _is_enode(edge[1])):
+                                  e_edge_count + = 1
+
+                return 1-(e_edge_count/(nx.number_of_edges(summary_graph)+0.0))
+
+
+def _is_enode(node):
+                  """
+                function to determine if the node is an enode
+                @param:
+                                node : a node whose type should be checked to be E-node
+								
+                @return:
+                                boolean value
+                """
+                  
+                  
+                          
+                  
+                  
+                        
+                          
+                
+	
+
+def _get_all_entity_nodes(cnode=None):
+                  """
+                  function to obtain entity nodes of given class node(C-vertex)
+                  @param:
+                                cnode::as string
+
+                  @return:
+                                list of entity nodes to which given cnode belongs.
+                   """
+                  type_predicate = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+
+                  entity_nodes = data.subjects(object=cnode, predicate=type_predicate)["response"]
+
+                  return entity_nodes
 
 
 def _class_type(enode=None):
@@ -146,3 +203,9 @@ def _class_type(enode=None):
 # PREPROCESSED DATASTRUCTURES
 _keyword_index = _make_keyword_index()
 _summary_graph = _make_summary_graph()
+
+
+if __name__ == "__main__":
+        print _get_all_entity_nodes(cnode="Android")
+
+
