@@ -90,8 +90,8 @@ def _make_summary_graph():
 	for cnode in cnodes:
 		summary_graph.add_node(cnode, cost=_cost(cnode), cursors=[])
 	# add BNode and Thing Class
-	summary_graph.add_node("BNode", cost=_cosr("Bnode"), cursor=[])
-	summary_graph.add_node("Thing", cost=_cosr("Thing"), cursor=[])
+	summary_graph.add_node("BNode", cost=_cost("Bnode"), cursor=[])
+	summary_graph.add_node("Thing", cost=_cost("Thing"), cursor=[])
 
 	triples = data.triples()
 	for row in triples:
