@@ -75,6 +75,9 @@ def _get_all_entity_nodes(cnode=None):
     return list(set(entity_nodes))
 
 
+#############################################################################################################################
+#############################################################################################################################
+
 
 ######## SECTION 4 - INDEXING GRAPH DATA ########
 ### KEYWORD INDEXING ###
@@ -164,8 +167,8 @@ def _make_summary_graph():
     for cnode in cnodes:
         summary_graph.add_node(cnode, cost=None, cursors=[])
     # add BNode and Thing Class
-    summary_graph.add_node("BNode", cost=None, cursor=[])
-    summary_graph.add_node("Thing", cost=None, cursor=[])
+    summary_graph.add_node("BNode", cost=None, cursors=[])
+    summary_graph.add_node("Thing", cost=None, cursors=[])
     
     # add r-edges between the nodes of the graph
     import itertools as it
@@ -178,11 +181,15 @@ def _make_summary_graph():
             node_pairs = it.product(_class_type(row[0]), _class_type(row[2]))
             for pair in node_pairs:
                 summary_graph.add_edge(pair[0], pair[1], key=row[1],
-                    cost=None, cursor=[])
+                    cost=None, cursors=[])
 
     summary_graph = _attach_costs(summary_graph)
 
     return summary_graph
+
+
+#############################################################################################################################
+#############################################################################################################################
 
 
 ######## SECTION 5 - SCORING ########
@@ -282,9 +289,12 @@ def _get_subgraph_cost(subgraph,summary_graph):
     return cumilative_cost
 
 
+#############################################################################################################################
+#############################################################################################################################
 
-### GRAPH SCHEMA INDEXING ###
-class Cursor:
+
+######## SECTION 6 - QUERY INTERPRETATION ########
+class _Cursor:
     def __init__(self,n,k,p,c,d):
         self.graph_element = n
         self.keyword = k
@@ -302,19 +312,13 @@ class Cursor:
 
 
 def _alg1(num, dmax, aug_graph, K):
-    """
-    Ki is a list of keyword elements
-    each keyword element is a tuple
-    a node is of form ("keyword",cost,cursorlist)
-    an edge is of form (node1, node2, key="keyword", cost, cursorlist )
-    """
     m = len(K)
     LQ = []
     LG = [] # global var from paper
     R = []
     for Ki in K:
         for k in Ki:
-            heapq.heappush(LQ, Cursor(k,k,None,k.cost,0))
+            heapq.heappush(LQ, _Cursor(k,k,None,k.cost,0))
 
     # while LQ not empty
     while len(LQ) > 0:
@@ -330,32 +334,64 @@ def _alg1(num, dmax, aug_graph, K):
                     # take care of cyclic paths
                     if neighbour not in c.parents:
                         # add new cursor to LQ
-                        heapq.heappush(LQ, Cursor(neighbour,c.keyword,n,
+                        heapq.heappush(LQ, _Cursor(neighbour,c.keyword,n,
                             c.cost+neighbour.cost, c.distance+1))
             R,LG = top_k(n,LG,LQ,num,R)
 
     return R
 
 
-def _cost(e):
+
+class _GE:
     """
-    function which returns the cost associated with the given graph element
-
-    First check if the element is a node or an edge and then return its cost
-
-    @param:
-        e :: graph element (a tuple)
-
+    a node is of form ("node", key)
+    an edge is of form ("edge", node1, node2, key)
     """
-    if len(e) == 2: # it is a node
-        return e[1]["cost"]
-    else len(e) == 4: # it is an edge
-        return e[3]["cost"]
+    graph = None
+    def __init__(self,ele_type,key,n1=None,n2=None):
+        self.type = ele_type
+        self.key = key
+        if self.type == "edge":
+            self.n1 = n1
+            self.n2 = n2
+
+    @property
+    def cost(self):
+        if self.type == "node":
+            return self.graph.node[self.key]["cost"]
+        elif self.type == "edge":
+            return self.graph.edge[self.n1][self.n2][self.key]["cost"]
+        return 0
+
+    @property
+    def neighbours(self):
+        neighbours = []
+        if self.type == "node":
+            connected_edges = self.graph.in_edges([self.key], keys=True) + 
+                self.graph.out_edges([self.key], keys=True)
+            # GEfy edges
+            for edge in connected_edges:
+                n1 = edge[0]
+                n2 = edge[1]
+                key = edge[2]
+                neighbours.append(_GE("edge",key,n1,n2))
+        elif self.type == "edge":
+            neighbours.append(_GE("node",self.n1))
+            neighbours.append(_GE("node",self.n2))
+        return neighbours
 
 
+    def add_cursor(self,c):
+        if self.type == "node":
+            self.graph.node[self.key]["cursors"].append(c)
+        elif self.type == "edge":
+            self.graph.edge[self.n1][self.n2][self.key]["cursors"].append(c)
 
 
-###########################################
+#############################################################################################################################
+#############################################################################################################################
+
+
 # PREPROCESSED DATASTRUCTURES
 _keyword_index = _make_keyword_index()
 _summary_graph = _make_summary_graph()
