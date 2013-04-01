@@ -166,11 +166,19 @@ def _make_summary_graph():
     # add BNode and Thing Class
     summary_graph.add_node("BNode", cost=None, cursor=[])
     summary_graph.add_node("Thing", cost=None, cursor=[])
-    # add edges between the nodes of the graph
+    
+    # add r-edges between the nodes of the graph
+    import itertools as it
     triples = data.triples()
     for row in triples:
-        summary_graph.add_edge(_class_type(row[0]), _class_type(row[2]),
-                                key=row[1], cost=None, cursor=[])
+        edge = (row[0], row[1])
+        if _is_redge(edge):
+            # make bunch of node pairs
+            # by taking the cartesian product of type of subj and obj
+            node_pairs = it.product(_class_type(row[0]), _class_type(row[2]))
+            for pair in node_pairs:
+                summary_graph.add_edge(pair[0], pair[1], key=row[1],
+                    cost=None, cursor=[])
 
     summary_graph = _attach_costs(summary_graph)
 
@@ -272,6 +280,65 @@ def _get_subgraph_cost(subgraph,summary_graph):
     for edge in subgraph.edges(keys=True):
         cumilative_cost += _get_edge_cost(edge, summary_graph, total_number_of_edges)
     return cumilative_cost
+
+
+
+### GRAPH SCHEMA INDEXING ###
+class Cursor:
+    def __init__(self,n,k,p,c,d):
+        self.graph_element = n
+        self.keyword = k
+        self.parent = p
+        self.cost = c
+        self.distance = d
+
+    def __cmp__(self,other):
+        if self.cost < other.cost:
+            return -1
+        elif self.cost > other.cost:
+            return 1
+        else:
+            return 0
+
+
+def _alg1(num, dmax, aug_graph, K):
+    """
+    Ki is a list of keyword elements
+    each keyword element is a tuple
+    a node is of form ("keyword",cost,cursorlist)
+    an edge is of form (node1, node2, key="keyword", cost, cursorlist )
+    """
+    m = len(K)
+    LQ = []
+    for Ki in K:
+        for k in Ki:
+            heapq.heappush(LQ, Cursor(k,k,None,_cost(k),0))
+
+    # while LQ not empty
+    while len(LQ) > 0:
+        c = heapq.heappop(LQ)
+        n = c.graph_element
+        if c.distance < dmax:
+            pass
+
+    return R
+
+
+def _cost(e):
+    """
+    function which returns the cost associated with the given graph element
+
+    First check if the element is a node or an edge and then return its cost
+
+    @param:
+        e :: graph element (a tuple)
+
+    """
+    if len(e) == 2: # it is a node
+        return e[1]["cost"]
+    else len(e) == 4: # it is an edge
+        return e[3]["cost"]
+
 
 
 
