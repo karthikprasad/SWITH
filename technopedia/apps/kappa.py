@@ -310,16 +310,29 @@ def _alg1(num, dmax, aug_graph, K):
     """
     m = len(K)
     LQ = []
+    LG = [] # global var from paper
+    R = []
     for Ki in K:
         for k in Ki:
-            heapq.heappush(LQ, Cursor(k,k,None,_cost(k),0))
+            heapq.heappush(LQ, Cursor(k,k,None,k.cost,0))
 
     # while LQ not empty
     while len(LQ) > 0:
         c = heapq.heappop(LQ)
         n = c.graph_element
         if c.distance < dmax:
-            pass
+            n.add_cursor(c)
+            neighbours = n.neighbours
+            neighbours.remove(c.parent) # reomove the parent from list
+            # if neighbours not empty
+            if len(neighbours) > 0:
+                for neighbour in neighbours:
+                    # take care of cyclic paths
+                    if neighbour not in c.parents:
+                        # add new cursor to LQ
+                        heapq.heappush(LQ, Cursor(neighbour,c.keyword,n,
+                            c.cost+neighbour.cost, c.distance+1))
+            R,LG = top_k(n,LG,LQ,num,R)
 
     return R
 
