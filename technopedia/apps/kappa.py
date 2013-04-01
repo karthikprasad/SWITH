@@ -294,54 +294,6 @@ def _get_subgraph_cost(subgraph,summary_graph):
 
 
 ######## SECTION 6 - QUERY INTERPRETATION ########
-class _Cursor:
-    def __init__(self,n,k,p,c,d):
-        self.graph_element = n
-        self.keyword = k
-        self.parent = p
-        self.cost = c
-        self.distance = d
-
-    def __cmp__(self,other):
-        if self.cost < other.cost:
-            return -1
-        elif self.cost > other.cost:
-            return 1
-        else:
-            return 0
-
-
-def _alg1(num, dmax, aug_graph, K):
-    m = len(K)
-    LQ = []
-    LG = [] # global var from paper
-    R = []
-    for Ki in K:
-        for k in Ki:
-            heapq.heappush(LQ, _Cursor(k,k,None,k.cost,0))
-
-    # while LQ not empty
-    while len(LQ) > 0:
-        c = heapq.heappop(LQ)
-        n = c.graph_element
-        if c.distance < dmax:
-            n.add_cursor(c)
-            neighbours = n.neighbours
-            neighbours.remove(c.parent) # reomove the parent from list
-            # if neighbours not empty
-            if len(neighbours) > 0:
-                for neighbour in neighbours:
-                    # take care of cyclic paths
-                    if neighbour not in c.parents:
-                        # add new cursor to LQ
-                        heapq.heappush(LQ, _Cursor(neighbour,c.keyword,n,
-                            c.cost+neighbour.cost, c.distance+1))
-            R,LG = top_k(n,LG,LQ,num,R)
-
-    return R
-
-
-
 class _GE:
     """
     a node is of form ("node", key)
@@ -386,6 +338,62 @@ class _GE:
             self.graph.node[self.key]["cursors"].append(c)
         elif self.type == "edge":
             self.graph.edge[self.n1][self.n2][self.key]["cursors"].append(c)
+
+
+class _Cursor:
+    def __init__(self,n,k,p,c,d):
+        self.graph_element = n  # _GE
+        self.keyword = k  # _GE
+        self.parent = p  # _Cursor
+        self.cost = c  # int
+        self.distance = d  # int
+
+    def __cmp__(self,other):
+        if self.cost < other.cost:
+            return -1
+        elif self.cost > other.cost:
+            return 1
+        else:
+            return 0
+
+    @property
+    def ancestors(self):
+        ancestor_list = []
+        p = self.parent
+        while p is not None:
+            ancestor_list.append(p)
+            p = p.parent
+        return ancestor_list
+
+
+def _alg1(num, dmax, aug_graph, K):
+    m = len(K)
+    LQ = []
+    LG = [] # global var from paper
+    R = []
+    for Ki in K:
+        for k in Ki:
+            heapq.heappush(LQ, _Cursor(k,k,None,k.cost,0))
+
+    # while LQ not empty
+    while len(LQ) > 0:
+        c = heapq.heappop(LQ)
+        n = c.graph_element
+        if c.distance < dmax:
+            n.add_cursor(c)
+            neighbours = n.neighbours
+            neighbours.remove(c.parent) # reomove the parent from list
+            # if neighbours not empty
+            if len(neighbours) > 0:
+                for neighbour in neighbours:
+                    # take care of cyclic paths
+                    if neighbour not in c.ancestors:
+                        # add new cursor to LQ
+                        heapq.heappush(LQ, _Cursor(neighbour,c.keyword,n,
+                            c.cost+neighbour.cost, c.distance+1))
+            R,LG = top_k(n,LG,LQ,num,R)
+
+    return R
 
 
 #############################################################################################################################
