@@ -86,38 +86,6 @@ class _GE:
             self.graph.edge[self.n1][self.n2][self.key]["cursors"][c.i].append(c)
 
 
-    def is_connected(self,m):
-        """
-        checks if the graph element is connected to all the keywords along the
-        path already visited which is tracked by the cursors.
-
-        self is a connecting element if all self.Ci are not empty, i.e. 
-        for every keyword i, there is at least one cursor
-
-        @param
-            m :: no of keywords as int
-        @return
-            boolean value
-
-        """
-        # obtain a list of list of cursors
-        # each list within a list represents a list of cursors from keyword i.
-        list_of_lists = self.cursors.values()
-
-        # first check if self has been visited from all m keywords
-        if len(list_of_lists) == m:
-            # check if self is still connected to all the m keywords
-            # check if there is atleast one cursor in the path to each keyword
-            # i.e., length of every list within the list is >0
-            num_keywords_connected = sum([1 for i in list_of_lists if len(i)>0])
-
-            # self is connected if it is connected to all the m keywords
-            if num_keywords_connected == m:
-                return True
-        # self is not connected if it has not even been visited by all keywords
-        return False
-
-
     ### static functions
     @staticmethod
     def class_types(enode=None):
@@ -623,6 +591,43 @@ def _alg1(num, dmax, aug_graph, K):
 
 
 
+
+#############################################################################################################################
+#algo2
+##############################################################################################################################	
+def is_connected(self,m):
+        """
+        checks if the graph element is connected to all the keywords along the
+        path already visited which is tracked by the cursors.
+
+        self is a connecting element if all self.Ci are not empty, i.e. 
+        for every keyword i, there is at least one cursor
+
+        @param
+            m :: no of keywords as int
+        @return
+            boolean value
+
+        """
+        # obtain a list of list of cursors
+        # each list within a list represents a list of cursors from keyword i.
+        list_of_lists = self.cursors.values()
+
+        # first check if self has been visited from all m keywords
+        if len(list_of_lists) == m:
+            # check if self is still connected to all the m keywords
+            # check if there is atleast one cursor in the path to each keyword
+            # i.e., length of every list within the list is >0
+            num_keywords_connected = sum([1 for i in list_of_lists if len(i)>0])
+
+            # self is connected if it is connected to all the m keywords
+            if num_keywords_connected == m:
+                return True
+        # self is not connected if it has not even been visited by all keywords
+        return False
+
+
+
 def _cursor_combinations(n):
     """
     function to obtain a combination of paths to graph element - n,
@@ -648,6 +653,77 @@ def _cursor_combinations(n):
     """
     list_of_lists = n.cursors.values()
     return _it.product(*list_of_lists)
+	
+def _build_all_paths(all_combinations_list):
+	"""
+	A function that builds a set of paths for all the combinatios
+	
+	@param: 
+		all_combinations_list:: A list of list of m-cusor paths 
+	@return:
+		A list of list of m-graph paths 
+	"""
+	subgraphs_path_collection = []
+	for m_cursor_set in all_combinations_list:
+		subgraph_paths =[]
+		for cursor in m_cursor_set:
+			subgraph_paths.append(_build_path_from_cursor(cursor))
+		subgraphs_path_collection.append(subgraph_paths)
+	return subgraphs_path_collection
+
+def _build_path_from_cursor(cursor):
+	"""
+	function to obtain a path from a cursor
+	
+	@param:
+		cursor : A cursor to the node from were we need to create a path
+	
+	@return:
+		A path from keyword element to the end node, it is of type mulitDiGraph
+	"""
+	
+	destination = cursor.keyword
+	source = cursor.graph_element
+	path = nx.MultiDiGraph(label="path_"+source.key+"_to_"+destination.key)
+	current_cursor = cursor
+	while current_cursor != None:
+		if current_cursor.type == "node":
+			path.add_node(current_cursor.graph_element.key, cost = current_cursor.graph_element.cost)
+		else:
+			path.add_edge(current_cursor.graph_element.n1.key,current_cursor.graph_element.n2.key,current_cursor.graph_element.key,current_node_cursor.graph_element.cost)
+		current_cursor = current_cursor.parent
+		
+	return path
+	
+def _merge_paths_to_graph(paths):
+	"""
+	function to merge paths to a subgraph
+	@param:
+		A list of paths
+	@return:
+		A merged multiDiGraph
+	"""
+	subgraph = _nx.MultiGraph()
+	for path in paths:
+		subgraph = _nx.compose(path,subgraph)
+	return subgraph
+
+def _update_cost_of_subgraphs(subgraph_list):
+
+	cost_agumented_subgraph_list = []
+	for subgraph in subgraph_list:
+		cost = _get_subgraph_cost(subgraph,_summary_graph)
+		agumented_tuple = (subgraph,cost)
+		cost_agumented_subgraph_list.append(agumented_tuple)
+	return cost_agumented_subgraph_list
+		
+def _choose_top_k_sub_graphs(cost_agumented_subgraph_list,k):
+	cost_agumented_subgraph_list.sort(key=ret_cost)
+	return cost_agumented_subgraph_list[len(cost_agumented_subgraph_list)-k-1:]
+	
+def _ret_cost(a):
+	return a[1]
+	
 
 
 #############################################################################################################################
