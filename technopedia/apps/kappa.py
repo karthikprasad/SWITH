@@ -662,7 +662,7 @@ def _cursor_combinations(n):
 
 if __name__ == "__main__":
         import matplotlib.pyplot as plt
-        g = _make_summary_graph()
+        g = _get_summary_graph()
         _nx.draw(g)
         plt.show()
 
