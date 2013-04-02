@@ -326,6 +326,58 @@ def get_keyword_index():
     return index
 
 
+def _extract_keywords(uri):
+
+    """ 
+    function that fetches keywords from URI
+    @param:
+        uri : the uri that needs to be processed to fetch keywords
+    @return:
+        returns a list of keywords keyword_list = [k1,k2,k3,..kn]
+
+    """
+            
+    # fetching the last keywords part of the predicate URI
+    aedge_split = aedge.split("/")
+    keywords_token_aedge = aedge_split[len(aedge_split)-1]
+        
+    # seperating the keywords and cleaning them
+    keyword_list = keywords_token_aedge.split(".")
+    keyword_list_length = len(keyword_list)
+    for keyword_list_index in range(0,keyword_list_length):
+        keyword_list[keyword_list_index] = keyword_list[keyword_list_index].replace("_"," ")
+        #checking for the hash part of the URI 
+        if re.search(r'[a-z]+#[a-z]+',keyword_list[keyword_list_index]):
+            hash_position = keyword_list[keyword_list_index].index("#")
+            if hash_position > 0 :
+                cap_words_positions = re.search(r'[A-Z]+[a-z]*',keyword_list[keyword_list_index][hash_position+1:])
+                if cap_words_positions != None:
+                    #print cap_words_positions.span()
+                    if len(cap_words_positions.span()) >1:
+                        sub_keyword = keyword_list[keyword_list_index][hash_position+1:cap_words_positions.span()[0]+hash_position+1]
+                        for cap_word_position in range(0,len(cap_words_positions.span())-1):
+                            sub_keyword  = sub_keyword +  " " + keyword_list[keyword_list_index][(hash_position+1+cap_words_positions.span()[cap_word_position]):(hash_position+1+cap_words_positions.span()[cap_word_position+1])].lower()
+                            keyword_list.append(sub_keyword)
+                else:
+                    sub_keyword = keyword_list[keyword_list_index][hash_position+1:]
+                    keyword_list.append(sub_keyword)
+
+                keyword_list[keyword_list_index] = keyword_list[keyword_list_index][:hash_position]
+
+        else:
+            cap_words_positions = re.search(r'[A-Z]+[a-z]*',keyword_list[keyword_list_index])
+            if cap_words_positions != None:
+                #print cap_words_positions.span()
+                if len(cap_words_positions.span()) >1:
+                    sub_keyword = keyword_list[keyword_list_index][:cap_words_positions.span()[0]]
+                    for cap_word_position in range(0,len(cap_words_positions.span())-1):
+                        sub_keyword  = sub_keyword +  " " + keyword_list[keyword_list_index][(cap_words_positions.span()[cap_word_position]):(cap_words_positions.span()[cap_word_position+1])].lower()
+                    
+                    keyword_list[keyword_list_index] = sub_keyword
+                                                
+        #print keyword_list
+        return keyword_list
+
 
 ### GRAPH SCHEMA INDEXING ###
 
@@ -568,6 +620,34 @@ def _alg1(num, dmax, aug_graph, K):
             R,LG = top_k(n,LG,LQ,num,R)
 
     return R
+
+
+
+def _cursor_combinations(n):
+    """
+    function to obtain a combination of paths to graph element - n,
+    originating from different keywords.
+
+    each element has a list of list of cursors.
+    each element will have m lists; one list for each keyword.
+    each of these lists may have more than one cursor to the keyword i.
+    each cursor represents a path from element to keyword i.
+
+    this function therefore returns a list of tuples where each tuple has a 
+    one cursor to each keyword. the length of every tuple is therefore m.
+
+    the reurned list represents all possible subgraphs from node 
+    to each of the keywords along all combinations of paths
+    
+    @param:
+        n :: graph element
+    @return:
+        list of list of m-cusor paths 
+        [[c11,c12,..c1m],[c21,c22,..c2m],...[ck1,ck2,..ckm]]
+
+    """
+    list_of_lists = n.cursors.values()
+    return _it.product(*list_of_lists)
 
 
 #############################################################################################################################
