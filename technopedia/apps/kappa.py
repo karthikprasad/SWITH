@@ -622,7 +622,7 @@ def _alg1(num, dmax, aug_graph, K):
     return R
 
 
-
+### alg 2 functions ###
 def _cursor_combinations(n):
     """
     function to obtain a combination of paths to graph element - n,
@@ -642,12 +642,79 @@ def _cursor_combinations(n):
     @param:
         n :: graph element
     @return:
-        list of list of m-cusor paths 
-        [[c11,c12,..c1m],[c21,c22,..c2m],...[ck1,ck2,..ckm]]
+        list of tuples of m-cusor paths 
+        [(c11,c12,..c1m),(c21,c22,..c2m),...(ck1,ck2,..ckm)]
 
     """
     list_of_lists = n.cursors.values()
     return _it.product(*list_of_lists)
+
+
+# this function should take a cursor combination and return list of paths 
+# which can then be merged to obtain a subgraph
+def _build_all_paths(all_combinations_list):
+    """
+    A function that builds a set of paths for all the combinatios
+    
+    @param: 
+        all_combinations_list:: A list of tuples of m-cusor paths 
+    @return:
+        A list of list of m-graph paths 
+    """
+    subgraphs_path_collection = []
+    for m_cursor_set in all_combinations_list:
+        subgraph_paths =[]
+        for cursor in m_cursor_set:
+            subgraph_paths.append(_build_path_from_cursor(cursor))
+        subgraphs_path_collection.append(subgraph_paths)
+    return subgraphs_path_collection
+
+
+def _build_path_from_cursor(cursor):
+    """
+    function to obtain a path from a cursor
+    
+    @param:
+        cursor : A cursor to the node from were we need to create a path
+    
+    @return:
+        A path from keyword element to the end node, it is of type mulitDiGraph
+    """
+    
+    destination = cursor.keyword_element
+    source = cursor.graph_element
+    path = nx.MultiDiGraph(label="path_"+source.key+"_to_"+destination.key)
+    current_cursor = cursor
+    while current_cursor != None:
+        if current_cursor.type == "node":
+            path.add_node(current_cursor.graph_element.key, 
+                cost = current_cursor.graph_element.cost,
+                cursors = current_cursor.graph_element.cursors)
+                # cursors need not be needed
+        else:
+            path.add_edge(current_cursor.graph_element.n1,
+                current_cursor.graph_element.n2,
+                key = current_cursor.graph_element.key,
+                cost = current_cursor.graph_element.cost,
+                cursors = current_cursor.graph_element.cursors)
+                # cursors need not be needed
+        current_cursor = current_cursor.parent
+        
+    return path
+
+
+def _merge_paths_to_graph(paths):
+    """
+    function to merge paths to a subgraph
+    @param:
+        A list of paths
+    @return:
+        A merged multiDiGraph
+    """
+    subgraph = _nx.MultiGraph()
+    for path in paths:
+        subgraph = _nx.compose(path,subgraph)
+    return subgraph
 
 
 #############################################################################################################################
