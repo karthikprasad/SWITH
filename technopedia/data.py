@@ -622,7 +622,7 @@ class Term:
             if term.language is not None:
                 opstring = "\""+opstring+"\"" + "@" + term.language
             if term.datatype is not None:
-                opstring += opstring + "^^" + term.language
+                opstring += opstring + "^^" + term.datatype
         return opstring
 
 
@@ -721,3 +721,15 @@ if __name__ == "__main__":
     for row in t:
         print row
     '''
+    '''
+    import time
+    print "hello"
+    t = time.time()
+    l = triples()["response"]
+    print time.time()-t
+    print "hi"
+    t = time.time()
+    print len(l)
+    print time.time()-t
+    '''
+

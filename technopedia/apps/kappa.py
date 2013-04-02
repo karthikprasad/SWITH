@@ -161,7 +161,7 @@ def _get_edge_keyword_index():
 ### GRAPH SCHEMA INDEXING ###
 
 def _make_summary_graph():
-    summary_graph = nx.MultiDiGraph(label="summary graph")
+    summary_graph = _nx.MultiDiGraph(label="summary graph")
 
     cnodes = _get_all_class_nodes()
     for cnode in cnodes:
@@ -183,7 +183,7 @@ def _make_summary_graph():
                 summary_graph.add_edge(pair[0], pair[1], key=row[1],
                     cost=None, cursors=[])
 
-    summary_graph = _attach_costs(summary_graph)
+    #summary_graph = _attach_costs(summary_graph)
 
     return summary_graph
 
@@ -401,11 +401,15 @@ def _alg1(num, dmax, aug_graph, K):
 
 
 # PREPROCESSED DATASTRUCTURES
-_keyword_index = _make_keyword_index()
-_summary_graph = _make_summary_graph()
+#_keyword_index = _make_keyword_index()
+#_summary_graph = _make_summary_graph()
 
 
 if __name__ == "__main__":
-        pass
+        import matplotlib.pyplot as plt
+        g = _make_summary_graph()
+        _nx.draw(g)
+        plt.show()
+
 
 
