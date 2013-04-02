@@ -19,16 +19,20 @@ class _GE:
 
     ### functions asscoiated with GE object
     def __init__(self,ele_type,key,n1=None,n2=None,sub_type=None):
-        self.type = ele_type
-        self.key = key
+        self.type = ele_type  # Grpah element type: node or edge
+        self.key = key  # Grpah element label (URI or literal)
         if self.type == "edge":
-            self.n1 = n1
-            self.n2 = n2
-        self.sub_type = sub_type
+            self.n1 = n1  # label of one vertex of edge
+            self.n2 = n2  # label of another vertex of edge
+        self.sub_type = sub_type  # "c" or "v" for node; "a" or "r" for edge
 
 
     @property
     def cost(self):
+        """
+        returns the cost associated with the graph element
+
+        """
         if self.type == "node":
             return self.graph.node[self.key]["cost"]
         elif self.type == "edge":
@@ -37,7 +41,24 @@ class _GE:
 
 
     @property
+    def cursors(self):
+        """
+        returns the dictionary of cursors associated with the graph element
+
+        """
+        if self.type == "node":
+            return self.graph.node[self.key]["cursors"]
+        elif self.type == "edge":
+            return self.graph.edge[self.n1][self.n2][self.key]["cursors"]
+
+
+    @property
     def neighbours(self):
+        """
+        returs the list of neighbour Graph elements.
+        returns list of connected edges if self is a node.
+        returns list of adjacent nodes (two nodes) if self is an edge.
+        """
         neighbours = []
         if self.type == "node":
             connected_edges = self.graph.in_edges([self.key], keys=True) + 
@@ -55,10 +76,46 @@ class _GE:
 
 
     def add_cursor(self,c):
+        """
+        add the given cursor to an appropriate slot in the elements cursors dict
+
+        """
         if self.type == "node":
-            self.graph.node[self.key]["cursors"].append(c)
+            self.graph.node[self.key]["cursors"][c.i].append(c)
         elif self.type == "edge":
-            self.graph.edge[self.n1][self.n2][self.key]["cursors"].append(c)
+            self.graph.edge[self.n1][self.n2][self.key]["cursors"][c.i].append(c)
+
+
+    def is_connected(self,m):
+        """
+        checks if the graph element is connected to all the keywords along the
+        path already visited which is tracked by the cursors.
+
+        self is a connecting element if all self.Ci are not empty, i.e. 
+        for every keyword i, there is at least one cursor
+
+        @param
+            m :: no of keywords as int
+        @return
+            boolean value
+
+        """
+        # obtain a list of list of cursors
+        # each list within a list represents a list of cursors from keyword i.
+        list_of_lists = self.cursors.values()
+
+        # first check if self has been visited from all m keywords
+        if len(list_of_lists) == m:
+            # check if self is still connected to all the m keywords
+            # check if there is atleast one cursor in the path to each keyword
+            # i.e., length of every list within the list is >0
+            num_keywords_connected = sum([1 for i in list_of_lists if len(i)>0])
+
+            # self is connected if it is connected to all the m keywords
+            if num_keywords_connected == m:
+                return True
+        # self is not connected if it has not even been visited by all keywords
+        return False
 
 
     ### static functions
@@ -77,7 +134,6 @@ class _GE:
         """
         type_predicate = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
         class_type = data.objects(subject=enode, predicate=type_predicate)["response"]
-
         if len(class_type) <= 0:
             if data.Term.type(enode) == "BNode":
                 class_type = ["BNode"]
@@ -270,46 +326,6 @@ def get_keyword_index():
     return index
 
 
-def _get_vertex_keyword_index():
-    """
-    function which makes a keyword index - a mapping from
-    keyword to keyword-element_vertex(V-vertex) via predicate-label/aedge.
-
-    @return:
-        dictionary of form {"keyword":[(predicate-labeli, [Ci1, Ci2, Ci3,...]),
-                                       (predicate-labelj, [Cj1, Cj2, Cj3,...]),
-                                       (...)
-                                      ]
-                            }
-
-    """
-    keyword_index = _coll.defaultdict(list)
-
-    # get a list of V-vertices(possible keywords)
-    vnodes = data.literals()["response"]
-
-    for vnode in vnodes:
-        # get list of predicate labels(A-edges) for a given keyword
-        aedges = data.predicates(object=vvertex)["response"]
-
-        for aedge in aedges:
-            # get a list of entity nodes associated with keyword and predicate
-            enodes = data.subjects(object=vvertex, predicate=aedge)
-
-            # for each of the entity nodes, obtain all the class nodes
-            cnodes = []
-            for enode in enodes:
-                cnodes += _class_type(enode)
-            cnodes = list(set(cnodes))
-
-            # aedge=predicate-labeli, cnodes=[Ci1, Ci2,...]
-            tuple_i = (aedge, cnodes)
-            # append this tuple to the keyword index list
-            keyword_index[vvertex].append(tuple_i)
-
-    return keyword_index
-
-
 
 ### GRAPH SCHEMA INDEXING ###
 
@@ -317,14 +333,14 @@ def _get_summary_graph():
     summary_graph = _nx.MultiDiGraph(label="summary graph")
 
     for cnode in _GE.cnodes:
-        summary_graph.add_node(cnode, cost=None, cursors=[])
+        summary_graph.add_node(cnode, cost=None, cursors=_coll.defaultdict(list))
     # add BNode and Thing Class
-    summary_graph.add_node("BNode", cost=None, cursors=[])
-    summary_graph.add_node("Thing", cost=None, cursors=[])
+    summary_graph.add_node("BNode", cost=None, cursors=_coll.defaultdict(list))
+    summary_graph.add_node("Thing", cost=None, cursors=_coll.defaultdict(list))
     
     for redge in _GE.redges:
         summary_graph.add_edge(redge[0], redge[1], key=redge[2],
-                    cost=None, cursors=[])
+                    cost=None, cursors=_coll.defaultdict(list))
 
     return summary_graph
 
@@ -477,27 +493,28 @@ def _make_augmented_graph(K):
         for ele in Ki:
             # if element is a V-Node
             if ele.type == "node" and ele.sub_type == "v":
-                aug_graph.add_node(ele.key, cost=None, cursors=[])
+                aug_graph.add_node(ele.key, cost=1, cursors=_coll.defaultdict(list))
 
                 # get list of aedges associated with the given vnode(literal)
                 aedges = [edge for edge in _GE.aedges if edge[1] == ele.key]
                 for aedge in aedges:
                     aug_graph.add_edge(aedge[0], aedge[1], key=aedge[2],
-                        cost=None, cursors=[])
+                        cost=1, cursors=_coll.defaultdict(list))
                         # NOTE: aedge[1] is same as ele.key
             
             # else if element is A-edge        
             elif ele.type == "edge" and ele.sub_type == "a":
-                aug_graph.add_edge(ele.n1, ele.n2, key=key, 
-                    cost=None, cursors=[])
+                aug_graph.add_edge(ele.n1, ele.n2, key=key,
+                    cost=1, cursors=_coll.defaultdict(list))
 
     return aug_graph
 
 
 class _Cursor:
-    def __init__(self,n,k,p,c,d):
+    def __init__(self,n,k,i,p,c,d):
         self.graph_element = n  # _GE
-        self.keyword = k  # _GE
+        self.keyword_element = k  # _GE
+        self.i = i  # keyword number
         self.parent = p  # _Cursor
         self.cost = c  # int
         self.distance = d  # int
@@ -525,9 +542,12 @@ def _alg1(num, dmax, aug_graph, K):
     LQ = []
     LG = [] # global var from paper
     R = []
+
+    i = 0
     for Ki in K:
+        i += 1
         for k in Ki:
-            heapq.heappush(LQ, _Cursor(k,k,None,k.cost,0))
+            heapq.heappush(LQ, _Cursor(k,k,i,None,k.cost,0))
 
     # while LQ not empty
     while len(LQ) > 0:
@@ -543,8 +563,8 @@ def _alg1(num, dmax, aug_graph, K):
                     # take care of cyclic paths
                     if neighbour not in c.ancestors:
                         # add new cursor to LQ
-                        heapq.heappush(LQ, _Cursor(neighbour,c.keyword,n,
-                            c.cost+neighbour.cost, c.distance+1))
+                        heapq.heappush(LQ, _Cursor(neighbour, c.keyword_element,
+                            c.i, n, c.cost+neighbour.cost, c.distance+1))
             R,LG = top_k(n,LG,LQ,num,R)
 
     return R
