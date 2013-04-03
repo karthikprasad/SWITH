@@ -855,6 +855,34 @@ def _k_ranked(LG):
     else:
         return LG[len(LG)-1].cost
 
+def _initialize_const_var(subgraph):
+	i = 0
+	node_dict = _coll.defaultdict(str)
+	for node in subgraph.nodes():
+		variable = "var" + srt(i)
+		i = i+1
+		constant = node
+		node_dict[constant] = variable
+	return node_dict
+	
+	
+def _map_edge(edge,node_dict):
+	if _GE.is_aedge(edge):
+		#fill in
+	elif _GE.is_redge(edge):
+		query_str += "type("+node_dict[e[0]]+","+ e[0]+")^type("+node_dict[e[1]]+","+ e[1]+ ")^" + e[2] +"(" + node_dict[e[0]] + "," + node_dict[e[1]]+")"
+	
+
+def _map_to_query(G):
+	
+	query_str = ""
+	node_dict = _initialize_const_var(G)
+	for edge in G.edges(key="true"):
+		query_str += _map_edge(edge,node_dict) + "^" 
+	guery_str = query_str[:len(query_str)-1]
+	return query_str
+		
+		
 
 def _alg2(n, m, LG, LQ, k, R):
 
@@ -877,6 +905,8 @@ def _alg2(n, m, LG, LQ, k, R):
             R.append(_map_to_query(G[0]))
 
     return R,LG
+	
+	
 
 
 #############################################################################################################################
