@@ -275,12 +275,12 @@ def _get_keyword_index():
     index = _coll.defaultdict(list)
 
     for cnode in _GE.cnodes:
-        keywords = _extract_keywords(cnode)
+        keywords = _extract_keywords_from_uri(cnode)
         for keyword in keywords:
             index[keyword].append(_GE("node",cnode,sub_type="c"))
 
     for vnode in _GE.vnodes:
-        keywords = vnode # _extract_keywords_from_literal(vnode)
+        keywords = _extract_keywords_from_literal(vnode)
         for keyword in keywords:
             index[keyword].append(_GE("node",vnode,sub_type="v"))
 
@@ -288,7 +288,7 @@ def _get_keyword_index():
         n1 = redge[0]
         n2 = redge[1]
         key = redge[2]
-        keywords = _extract_keywords(redge[2])
+        keywords = _extract_keywords_from_uri(redge[2])
         for keyword in keywords:
             index[keyword].append(_GE("edge",key,n1,n2,sub_type="r"))
 
@@ -296,14 +296,39 @@ def _get_keyword_index():
         n1 = aedge[0]
         n2 = aedge[1]
         key = aedge[2]
-        keywords = _extract_keywords(aedge[2])
+        keywords = _extract_keywords_from_uri(aedge[2])
         for keyword in keywords:
             index[keyword].append(_GE("edge",key,n1,n2,sub_type="a"))
 
     return index
 
 
-def _extract_keywords(uri):
+def _extract_keywords_from_literal(literal):
+    """ 
+    function that fetches keywords from literal
+    @param:
+        literal : the literal that needs to be processed to fetch keywords
+    @return:
+        returns a list of keywords keyword_list = [k1,k2,k3,..kn]
+
+    """
+    literal = literal.strip()
+    # if datatype indicator is present, remove it.
+    if literal.rfind("^^") != -1:
+        literal = literal[:literal.rfind("^^")]
+        literal = literal.replace("\"", "")
+    # else check if it has lang info
+    elif literal.rfind("@") != -1:
+        # literal has @, check if the rhs is lang code or longer text
+        rhs = literal[literal.rfind("@")+1:]
+        if len(rhs) == 2:
+            literal = literal[:literal.rfind("@")]
+            literal = literal.replace("\"", "")
+    keyword = _clean_camelCase(literal)
+    return [keyword]
+
+
+def _extract_keywords_from_uri(uri):
     """ 
     function that fetches keywords from URI
     @param:
@@ -313,12 +338,12 @@ def _extract_keywords(uri):
 
     """
     
-    # fetching the last keywords part of the predicate URI by splitting on "/"
+    # fetching the last keywords part of the URI by splitting on "/"
     uri_split = uri.split("/")
     keywords_token_uri = uri_split[len(uri_split)-1]
     
     # seperating the keywords on "."
-    keyword_list = keywords_token_uri.split(".")
+    keyword_list = keywords_token_uri.strip().split(".")
     keyword_list_length = len(keyword_list)
     
     #process each keyword
@@ -336,6 +361,7 @@ def _extract_keywords(uri):
             #check for camelCases
             sub_keyword = _clean_camelCase(keyword_list[keyword_list_index])
             keyword_list[keyword_list_index] = sub_keyword
+    
     return keyword_list
         
     
@@ -362,7 +388,7 @@ def _clean_camelCase(keyword):
     """
     function looks for camelCase in the keywords and uncamelCases them
     @param:
-        keyword::The key word that needs to be checked foe camelCase
+        keyword::The key word that needs to be checked for camelCase
     @return:
         The cleaned keyword
 
@@ -375,10 +401,15 @@ def _clean_camelCase(keyword):
         if len(cap_pos_tuple) >1:
             sub_keyword = keyword[:cap_pos_tuple[0]]
             for cap_word_position in range(0,len(cap_pos_tuple)-1):
-                sub_keyword  = sub_keyword +  " " + \
-                    keyword[(cap_pos_tuple[cap_word_position]):(cap_pos_tuple[cap_word_position+1])].lower()
+                sub_keyword  = sub_keyword.strip() +  " " + \
+                    keyword[(cap_pos_tuple[cap_word_position]):(cap_pos_tuple[cap_word_position+1])].lower().strip()
             keyword = sub_keyword
-    return keyword
+
+    # remove .,-,_ from the keyword
+    keyword = keyword.replace(".", "")
+    keyword = keyword.replace("-", "")
+    keyword = keyword.replace("_", "")
+    return keyword.strip()
 
 
 ### GRAPH SCHEMA INDEXING ###
@@ -869,6 +900,7 @@ def _alg2(n, m, LG, LQ, k, R):
 
 
 if __name__ == "__main__":
+    
     k = _get_keyword_index().keys()
     print k
     import matplotlib.pyplot as plt
