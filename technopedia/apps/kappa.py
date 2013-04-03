@@ -848,15 +848,14 @@ def _k_ranked(LG):
     @return:
         Cost of the kth subgraph
     """
-    if k <= len(LG):
-        return LG[len(LG)-k].cost
-    elif len(LG)==0:
+    if len(LG) == 0:
         return -1
-	else:
-		return LG[len(LG)-1]
+    elif k <= len(LG):
+        return LG[len(LG)-k].cost
+    else:
+        return LG[len(LG)-1].cost
 
-        
-    
+
 def _alg2(n, m, LG, LQ, k, R):
 
     if _is_connected(n,m):
