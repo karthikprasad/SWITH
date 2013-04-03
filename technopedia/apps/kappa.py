@@ -812,26 +812,12 @@ def _k_ranked(LG):
         Cost of the kth subgraph
     """
     if k <= len(LG):
-        return LG[len(LG)-k]
-    else:
-        return LG[0]
+        return LG[len(LG)-k].cost
+    elif len(LG)==0:
+        return -1
+	else:
+		return LG[len(LG)-1]
 
-
-## not needed since LQ is a heap  
-def _min_cost_cursor(LQ):
-    """
-    function to find the minimum cost cursor
-    @param:
-        LQ :: A list of cursors
-    @return:
-        The cursor with minimum cost
-    """
-    min_cursor_cost = sys.maxint
-    min_cursor = None
-    for cursor in LQ:
-        if cursor.cost <= min_cursor_cost:
-            min_cursor = cursor
-    return min_cursor
         
     
 def _alg2(n, m, LG, LQ, k, R):
