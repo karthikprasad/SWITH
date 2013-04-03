@@ -12,15 +12,15 @@ class _GE:
     an edge is of form ("edge", node1, node2, key)
     """
     graph = None
-    cnodes = None  # independently obtained
-    vnodes = None  # independently obtained
+    cnodes = None  # independently obtained 
+    vnodes = None  # independently obtained 
     redges = None  # dependent on cnodes
     aedges = None  # dependent on vnodes
 
     ### functions asscoiated with GE object
     def __init__(self,ele_type,key,n1=None,n2=None,sub_type=None):
-        self.type = ele_type  # Grpah element type: node or edge
-        self.key = key  # Grpah element label (URI or literal)
+        self.type = ele_type  # Graph element type: node or edge
+        self.key = key  # Graph element label (URI or literal)
         if self.type == "edge":
             self.n1 = n1  # label of one vertex of edge
             self.n2 = n2  # label of another vertex of edge
@@ -84,9 +84,9 @@ class _GE:
             self.graph.node[self.key]["cursors"][c.i].append(c)
         elif self.type == "edge":
             self.graph.edge[self.n1][self.n2][self.key]["cursors"][c.i].append(c)
-
-
-    def is_connected(self,m):
+			
+			
+	def is_connected(self,m):
         """
         checks if the graph element is connected to all the keywords along the
         path already visited which is tracked by the cursors.
@@ -327,56 +327,77 @@ def get_keyword_index():
 
 
 def _extract_keywords(uri):
-
     """ 
     function that fetches keywords from URI
     @param:
         uri : the uri that needs to be processed to fetch keywords
     @return:
         returns a list of keywords keyword_list = [k1,k2,k3,..kn]
-
     """
-            
-    # fetching the last keywords part of the predicate URI
-    aedge_split = aedge.split("/")
-    keywords_token_aedge = aedge_split[len(aedge_split)-1]
+	
+	# fetching the last keywords part of the predicate URI by splitting on "/"
+	uri_split = uri.split("/")
+	keywords_token_uri = uri_split[len(uri_split)-1]
+	
+	# seperating the keywords on "."
+	keyword_list = keywords_token_uri.split(".")
+	keyword_list_length = len(keyword_list)
+	
+	#process each keyword
+	for keyword_list_index in range(0,keyword_list_length):
+		#replace underscores with whitespaces
+		keyword_list[keyword_list_index] = keyword_list[keyword_list_index].replace("_"," ")
         
-    # seperating the keywords and cleaning them
-    keyword_list = keywords_token_aedge.split(".")
-    keyword_list_length = len(keyword_list)
-    for keyword_list_index in range(0,keyword_list_length):
-        keyword_list[keyword_list_index] = keyword_list[keyword_list_index].replace("_"," ")
-        #checking for the hash part of the URI 
-        if re.search(r'[a-z]+#[a-z]+',keyword_list[keyword_list_index]):
-            hash_position = keyword_list[keyword_list_index].index("#")
-            if hash_position > 0 :
-                cap_words_positions = re.search(r'[A-Z]+[a-z]*',keyword_list[keyword_list_index][hash_position+1:])
-                if cap_words_positions != None:
-                    #print cap_words_positions.span()
-                    if len(cap_words_positions.span()) >1:
-                        sub_keyword = keyword_list[keyword_list_index][hash_position+1:cap_words_positions.span()[0]+hash_position+1]
-                        for cap_word_position in range(0,len(cap_words_positions.span())-1):
-                            sub_keyword  = sub_keyword +  " " + keyword_list[keyword_list_index][(hash_position+1+cap_words_positions.span()[cap_word_position]):(hash_position+1+cap_words_positions.span()[cap_word_position+1])].lower()
-                            keyword_list.append(sub_keyword)
-                else:
-                    sub_keyword = keyword_list[keyword_list_index][hash_position+1:]
-                    keyword_list.append(sub_keyword)
-
-                keyword_list[keyword_list_index] = keyword_list[keyword_list_index][:hash_position]
-
+		#checking for the hash part of the URI 
+		if _re.search(r'[a-z]+#[a-z]+',keyword_list[keyword_list_index]):
+			pre_hash_keyword,post_hash_keyword = _clean_hash(keyword_list[keyword_list_index])
+			keyword_list[keyword_list_index] = pre_hash_keyword
+			keyword_list.append(post_hash_keyword)
+        
         else:
-            cap_words_positions = re.search(r'[A-Z]+[a-z]*',keyword_list[keyword_list_index])
-            if cap_words_positions != None:
-                #print cap_words_positions.span()
-                if len(cap_words_positions.span()) >1:
-                    sub_keyword = keyword_list[keyword_list_index][:cap_words_positions.span()[0]]
-                    for cap_word_position in range(0,len(cap_words_positions.span())-1):
-                        sub_keyword  = sub_keyword +  " " + keyword_list[keyword_list_index][(cap_words_positions.span()[cap_word_position]):(cap_words_positions.span()[cap_word_position+1])].lower()
-                    
-                    keyword_list[keyword_list_index] = sub_keyword
-                                                
-        #print keyword_list
-        return keyword_list
+			#check for camelCases
+			sub_keyword = _clean_camelCase(keyword_list[keyword_list_index])
+			keyword_list[keyword_list_index] = sub_keyword
+	return keyword_list
+		
+	
+def _clean_hash(keyword):
+	"""
+	function that looks for hashes and seperates the keywords
+	@param:
+		keyword:: a string which has to be inspected for "#"
+	@return:
+		pre_hash_keyword:: the key word before "#"
+		post_hash_keyword::the key word after "#"
+	"""
+		
+	hash_position = keyword.index("#")
+	pre_hash_keyword = keyword[:hash_position]
+	post_hash_keyword = keyword[hash_position+1:]
+	pre_hash_keyword = _clean_camelCase(pre_hash_keyword)
+	post_hash_keyword = _clean_camelCase(post_hash_keyword)
+	return pre_hash_keyword,post_hash_keyword
+	
+	
+def _clean_camelCase(keyword):
+	"""
+	function looks for camelCase in the keywords and uncamelCases them
+	@param:
+		keyword::The key word that needs to be checked foe camelCase
+	@return:
+		The cleaned keyword
+	"""
+	cap_words_positions = _re.search(r'[A-Z]+[a-z]*',keyword)
+	if cap_words_positions != None:
+        #extracting the subwords from camelCase and converting them to normal phrases
+		cap_pos_tuple = cap_words_positions.span()
+		cap_pos_tuple = cap_pos_tuple + (len(keyword),)
+		if len(cap_pos_tuple) >1:
+			sub_keyword = keyword[:cap_pos_tuple[0]]
+			for cap_word_position in range(0,len(cap_pos_tuple)-1):
+				sub_keyword  = sub_keyword +  " " + keyword[(cap_pos_tuple[cap_word_position]):(cap_pos_tuple[cap_word_position+1])].lower()
+			keyword = sub_keyword
+	return keyword
 
 
 ### GRAPH SCHEMA INDEXING ###
@@ -623,6 +644,12 @@ def _alg1(num, dmax, aug_graph, K):
 
 
 ### alg 2 functions ###
+
+#############################################################################################################################
+#algo2
+##############################################################################################################################	
+
+
 def _cursor_combinations(n):
     """
     function to obtain a combination of paths to graph element - n,
@@ -648,73 +675,149 @@ def _cursor_combinations(n):
     """
     list_of_lists = n.cursors.values()
     return _it.product(*list_of_lists)
-
-
-# this function should take a cursor combination and return list of paths 
-# which can then be merged to obtain a subgraph
-def _build_all_paths(all_combinations_list):
-    """
-    A function that builds a set of paths for all the combinatios
-    
-    @param: 
-        all_combinations_list:: A list of tuples of m-cusor paths 
-    @return:
-        A list of list of m-graph paths 
-    """
-    subgraphs_path_collection = []
-    for m_cursor_set in all_combinations_list:
-        subgraph_paths =[]
-        for cursor in m_cursor_set:
-            subgraph_paths.append(_build_path_from_cursor(cursor))
-        subgraphs_path_collection.append(subgraph_paths)
-    return subgraphs_path_collection
-
+	
+def _build_m_paths(m_cursor_list):
+	"""
+	A function that builds a set of paths for the given list of m crsor list
+	
+	@param: 
+		m_cursor_list:: A list of m-cusor paths 
+	@return:
+		A list of list of m-graph paths 
+	"""
+	
+	subgraph_paths =[]
+	for cursor in m_cursor_set:
+		subgraph_paths.append(_build_path_from_cursor(cursor))
+	return subgraphs_paths
 
 def _build_path_from_cursor(cursor):
-    """
-    function to obtain a path from a cursor
-    
-    @param:
-        cursor : A cursor to the node from were we need to create a path
-    
-    @return:
-        A path from keyword element to the end node, it is of type mulitDiGraph
-    """
-    
-    destination = cursor.keyword_element
-    source = cursor.graph_element
-    path = nx.MultiDiGraph(label="path_"+source.key+"_to_"+destination.key)
-    current_cursor = cursor
-    while current_cursor != None:
-        if current_cursor.type == "node":
-            path.add_node(current_cursor.graph_element.key, 
-                cost = current_cursor.graph_element.cost,
-                cursors = current_cursor.graph_element.cursors)
-                # cursors need not be needed
-        else:
-            path.add_edge(current_cursor.graph_element.n1,
-                current_cursor.graph_element.n2,
-                key = current_cursor.graph_element.key,
-                cost = current_cursor.graph_element.cost,
-                cursors = current_cursor.graph_element.cursors)
-                # cursors need not be needed
-        current_cursor = current_cursor.parent
-        
-    return path
-
-
+	"""
+	function to obtain a path from a cursor
+	
+	@param:
+		cursor :: A cursor to the node from were we need to create a path
+	
+	@return:
+		A path from keyword element to the end node, it is of type mulitDiGraph
+	"""
+	
+	destination = cursor.keyword
+	source = cursor.graph_element
+	path = nx.MultiDiGraph(label="path_"+source.key+"_to_"+destination.key)
+	current_cursor = cursor
+	while current_cursor != None:
+		if current_cursor.type == "node":
+			path.add_node(current_cursor.graph_element.key, cost = current_cursor.graph_element.cost)
+		else:
+			path.add_edge(current_cursor.graph_element.n1.key,current_cursor.graph_element.n2.key,current_cursor.graph_element.key,current_node_cursor.graph_element.cost)
+		current_cursor = current_cursor.parent
+		
+	return path
+	
 def _merge_paths_to_graph(paths):
-    """
-    function to merge paths to a subgraph
-    @param:
-        A list of paths
-    @return:
-        A merged multiDiGraph
-    """
-    subgraph = _nx.MultiGraph()
-    for path in paths:
-        subgraph = _nx.compose(path,subgraph)
-    return subgraph
+	"""
+	function to merge paths to a subgraph
+	@param:
+		paths::A list of paths
+	@return:
+		A merged multiDiGraph
+	"""
+	subgraph = _nx.MultiGraph()
+	for path in paths:
+		subgraph = _nx.compose(path,subgraph)
+	return subgraph
+
+def _update_cost_of_subgraph(subgraph):
+	"""
+	function to update the cost of subgraph
+	@param:
+		subgraph::A subgraph whose cost must be calculated
+	@return:
+		A tuple (subgraph,cost)
+	"""
+	cost = _get_subgraph_cost(subgraph,_summary_graph)
+	agumented_tuple = (subgraph,cost)
+	return agumented_tuple
+		
+def _choose_top_k_sub_graphs(cost_agumented_subgraph_list,k):
+	"""
+	function to fetch the best k subgraphs
+	@param:
+		cost_agumented_subgraph_list::A list subgraphs agumented with cost [(subgraph,cost),...]
+		k::Number of quries required
+	@return:
+		A list k subgraphs agumented with cost [(subgraph1,cost1),...(subgraphk,costk)]
+	"""
+	cost_agumented_subgraph_list.sort(key=ret_cost)
+	if k <= len(cost_agumented_subgraph_list):
+		return cost_agumented_subgraph_list[len(cost_agumented_subgraph_list)-k:]
+	else:
+		return cost_agumented_subgraph_list
+	
+
+def _ret_cost(a):
+	"""
+	function to return
+	@param:
+		a::tuple to be sorted in the list
+	@return:
+		A key, i.e cost
+	"""
+	return a[1]
+	
+def _k_ranked(LG):
+	"""
+	function to return the kth ranked element
+	@param:
+		LQ::A list of subgraphs agumented with cost
+	@return:
+		Cost of the kth subgraph
+	"""
+	if k <= len(LG):
+		return LG[len(LG)-k]
+	else:
+		return LG[0]
+		
+def _min_cost_cursor(LQ):
+	"""
+	function to find the minimum cost cursor
+	@param:
+		LQ :: A list of cursors
+	@return:
+		The cursor with minimum cost
+	"""
+	min_cursor_cost = sys.maxint
+	min_cursor = None
+	for cursor in LQ:
+		if cursor.cost <= min_cursor_cost:
+			min_cursor = cursor
+	return min_cursor
+		
+	
+def _alg2(n, LG, LQ, k, R):
+
+	if is_connected(n):
+		#process new subgraphs in n
+		C =_cursor_combinations(n)
+		for c in C:
+			paths = _build_m_paths(c)
+			subgraph = _merge_paths_to_graph(paths)
+			cost_agumented_tuple = _update_cost_of_subgraph(subgraph)
+			LG.append(cost_agumented_tuple)
+	
+	LG = _choose_top_k_sub_graphs(LG,k)
+	highest_cost = _k_ranked(LG,k)
+	lowest_cost = _min_cost_cursor(LQ).cost
+	
+	if highest_cost < lowest_cost:
+		for G in LG do
+			#add query computed from subgraph
+			R.append(map_to_query(G[0]))
+
+	return R,LG
+
+	
 
 
 #############################################################################################################################
