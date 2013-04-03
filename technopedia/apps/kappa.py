@@ -676,7 +676,7 @@ def _cursor_combinations(n):
     list_of_lists = n.cursors.values()
     return _it.product(*list_of_lists)
 	
-def _build_all_paths(m_cursor_list):
+def _build_m_paths(m_cursor_list):
 	"""
 	A function that builds a set of paths for the given list of m crsor list
 	
@@ -696,7 +696,7 @@ def _build_path_from_cursor(cursor):
 	function to obtain a path from a cursor
 	
 	@param:
-		cursor : A cursor to the node from were we need to create a path
+		cursor :: A cursor to the node from were we need to create a path
 	
 	@return:
 		A path from keyword element to the end node, it is of type mulitDiGraph
@@ -719,7 +719,7 @@ def _merge_paths_to_graph(paths):
 	"""
 	function to merge paths to a subgraph
 	@param:
-		A list of paths
+		paths::A list of paths
 	@return:
 		A merged multiDiGraph
 	"""
@@ -728,41 +728,95 @@ def _merge_paths_to_graph(paths):
 		subgraph = _nx.compose(path,subgraph)
 	return subgraph
 
-def _update_cost_of_subgraphs(subgraph_list):
+def _update_cost_of_subgraph(subgraph):
 	"""
 	function to update the cost of subgraph
 	@param:
-		A list of paths
+		subgraph::A subgraph whose cost must be calculated
 	@return:
-		A list of tuples (subgraph,cost)
+		A tuple (subgraph,cost)
 	"""
-	cost_agumented_subgraph_list = []
-	for subgraph in subgraph_list:
-		cost = _get_subgraph_cost(subgraph,_summary_graph)
-		agumented_tuple = (subgraph,cost)
-		cost_agumented_subgraph_list.append(agumented_tuple)
-	return cost_agumented_subgraph_list
+	cost = _get_subgraph_cost(subgraph,_summary_graph)
+	agumented_tuple = (subgraph,cost)
+	return agumented_tuple
 		
 def _choose_top_k_sub_graphs(cost_agumented_subgraph_list,k):
 	"""
 	function to fetch the best k subgraphs
 	@param:
-		A list subgraphs agumented with cost
+		cost_agumented_subgraph_list::A list subgraphs agumented with cost [(subgraph,cost),...]
+		k::Number of quries required
 	@return:
-		A list of subgraphs with k best subgraphs
+		A list k subgraphs agumented with cost [(subgraph1,cost1),...(subgraphk,costk)]
 	"""
 	cost_agumented_subgraph_list.sort(key=ret_cost)
-	return cost_agumented_subgraph_list[len(cost_agumented_subgraph_list)-k-1:]
+	if k <= len(cost_agumented_subgraph_list):
+		return cost_agumented_subgraph_list[len(cost_agumented_subgraph_list)-k:]
+	else:
+		return cost_agumented_subgraph_list
 	
+
 def _ret_cost(a):
 	"""
 	function to return
 	@param:
-		tuple to be sorted in the list
+		a::tuple to be sorted in the list
 	@return:
 		A key, i.e cost
 	"""
 	return a[1]
+	
+def _k_ranked(LG):
+	"""
+	function to return the kth ranked element
+	@param:
+		LQ::A list of subgraphs agumented with cost
+	@return:
+		Cost of the kth subgraph
+	"""
+	if k <= len(LG):
+		return LG[len(LG)-k]
+	else:
+		return LG[0]
+		
+def _min_cost_cursor(LQ):
+	"""
+	function to find the minimum cost cursor
+	@param:
+		LQ :: A list of cursors
+	@return:
+		The cursor with minimum cost
+	"""
+	min_cursor_cost = sys.maxint
+	min_cursor = None
+	for cursor in LQ:
+		if cursor.cost <= min_cursor_cost:
+			min_cursor = cursor
+	return min_cursor
+		
+	
+def _alg2(n, LG, LQ, k, R):
+
+	if is_connected(n):
+		#process new subgraphs in n
+		C =_cursor_combinations(n)
+		for c in C:
+			paths = _build_m_paths(c)
+			subgraph = _merge_paths_to_graph(paths)
+			cost_agumented_tuple = _update_cost_of_subgraph(subgraph)
+			LG.append(cost_agumented_tuple)
+	
+	LG = _choose_top_k_sub_graphs(LG,k)
+	highest_cost = _k_ranked(LG,k)
+	lowest_cost = _min_cost_cursor(LQ).cost
+	
+	if highest_cost < lowest_cost:
+		for G in LG do
+			#add query computed from subgraph
+			R.append(map_to_query(G[0]))
+
+	return R,LG
+
 	
 
 
