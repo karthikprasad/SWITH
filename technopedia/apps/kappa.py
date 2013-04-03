@@ -1,6 +1,7 @@
 import networkx as _nx
 import collections as _coll
 import itertools as _it
+import re as _re
 
 from technopedia import data
 
@@ -32,11 +33,13 @@ class _GE:
         """
         returns the cost associated with the graph element
 
+        access _GE.graph
+
         """
         if self.type == "node":
-            return self.graph.node[self.key]["cost"]
+            return _GE.graph.node[self.key]["cost"]
         elif self.type == "edge":
-            return self.graph.edge[self.n1][self.n2][self.key]["cost"]
+            return _GE.graph.edge[self.n1][self.n2][self.key]["cost"]
         return 0
 
 
@@ -45,11 +48,13 @@ class _GE:
         """
         returns the dictionary of cursors associated with the graph element
 
+        access _GE.graph
+
         """
         if self.type == "node":
-            return self.graph.node[self.key]["cursors"]
+            return _GE.graph.node[self.key]["cursors"]
         elif self.type == "edge":
-            return self.graph.edge[self.n1][self.n2][self.key]["cursors"]
+            return _GE.graph.edge[self.n1][self.n2][self.key]["cursors"]
 
 
     @property
@@ -58,11 +63,13 @@ class _GE:
         returs the list of neighbour Graph elements.
         returns list of connected edges if self is a node.
         returns list of adjacent nodes (two nodes) if self is an edge.
+
+        access _GE.graph
         """
         neighbours = []
         if self.type == "node":
-            connected_edges = self.graph.in_edges([self.key], keys=True) + 
-                self.graph.out_edges([self.key], keys=True)
+            connected_edges = _GE.graph.in_edges([self.key], keys=True) + 
+                _GE.graph.out_edges([self.key], keys=True)
             # GEfy edges
             for edge in connected_edges:
                 n1 = edge[0]
@@ -79,11 +86,13 @@ class _GE:
         """
         add the given cursor to an appropriate slot in the elements cursors dict
 
+        access _GE.graph
+
         """
         if self.type == "node":
-            self.graph.node[self.key]["cursors"][c.i].append(c)
+            _GE.graph.node[self.key]["cursors"][c.i].append(c)
         elif self.type == "edge":
-            self.graph.edge[self.n1][self.n2][self.key]["cursors"][c.i].append(c)
+            _GE.graph.edge[self.n1][self.n2][self.key]["cursors"][c.i].append(c)
             
             
     ### static functions
@@ -149,7 +158,7 @@ class _GE:
                 key = row[1]
                 # obtain a list of class nodes of the entity node(subject)
                 for n1 in _GE.class_types(row[0]):
-                    aedges.append((n1,n2,key))
+                    aedges.add((n1,n2,key))
 
             elif _GE.is_redge(edge):
                 # make bunch of node pairs
@@ -157,7 +166,7 @@ class _GE:
                 node_pairs = _it.product(_GE.class_types(row[0]), 
                     _GE.class_types(row[2]))
                 for pair in node_pairs:
-                    regdes.append((pair[0], pair[1], row[1]))
+                    regdes.add((pair[0], pair[1], row[1]))
 
         return list(redges), list(aedges)
 
@@ -236,8 +245,8 @@ class _GE:
         @return:
             boolean value
 
-        depends on self.vnodes
-        can be made independent
+        depends on _GE.vnodes
+        can be made independent by checking if obj is type literal
         """
         return edge[1] in _GE.vnodes
 
@@ -366,7 +375,8 @@ def _clean_camelCase(keyword):
         if len(cap_pos_tuple) >1:
             sub_keyword = keyword[:cap_pos_tuple[0]]
             for cap_word_position in range(0,len(cap_pos_tuple)-1):
-                sub_keyword  = sub_keyword +  " " + keyword[(cap_pos_tuple[cap_word_position]):(cap_pos_tuple[cap_word_position+1])].lower()
+                sub_keyword  = sub_keyword +  " " + 
+                    keyword[(cap_pos_tuple[cap_word_position]):(cap_pos_tuple[cap_word_position+1])].lower()
             keyword = sub_keyword
     return keyword
 
@@ -408,7 +418,10 @@ def _attach_costs(graph):
 def _attach_node_costs(graph):
     """
     function which attaches the cost to every node of the graph
-    @return graph with node costs attached
+    @param
+        graph :: networkx graph without cost info
+    @return 
+        networkx graph with node costs attached
 
     """
     total_number_of_nodes = graph.number_of_nodes()
@@ -428,13 +441,16 @@ def _get_node_cost(node, graph, total_number_of_nodes):
     @return:
         a score in the range 0-1
     """
-    return 1 - len(_get_all_entity_nodes(node)/(total_number_of_nodes +0.0)
+    return 1 - len(_GE.entity_nodes(node)/(total_number_of_nodes +0.0)
 
 
 def _attach_edge_costs(graph):
     """
     function which attaches the cost to every edge of the graph
-    @return graph with edge costs attached
+    @param
+        graph :: networkx graph without cost info
+    @return 
+        graph with edge costs attached
 
     """
     total_number_of_edges = graph.number_of_edges()
@@ -453,42 +469,44 @@ def _get_edge_cost(edge, graph, total_number_of_edges):
     popularity score :section 5
 
     @param:
-    edge: edge from the summary graph
-    graph: a graph to which the edge belongs to
-    total_number_of_edges: total_number_of_edges in the graph
+        edge: edge from the summary graph
+        graph: a graph to which the edge belongs to
+        total_number_of_edges: total_number_of_edges in the graph
     @return:
-    a score in the range 0-1
+        a score in the range 0-1
+
     """
-    eedge_count = 0
+    redge_count = 0
     n1 = edge[0]
     n2 = edge[1]
     adjacent_edges = graph.edges([n1,n2], keys=True)
     adjacent_edges.remove(edge)
 
     for neighbour_edge in adjacent_edges:
-        if _is_redge(neighbour_edge):
-            eedge_count + = 1
-    return 1 - eedge_count/(total_number_of_edges+0.0)
+        if _GE.is_redge(neighbour_edge):  ## ??????????????????????????????????????????????????????????????????
+            redge_count + = 1
+    return 1 - redge_count/(total_number_of_edges+0.0)
 
 
-def _get_subgraph_cost(subgraph):
+def _get_subgraph_cost(subgraph, supergraph):
     """
     function which returns the cost of the subgraph
     @param:
-        subgraph: the subgraph for which cost needs to be computed
+        subgraph :: the subgraph for which cost needs to be computed
+        supergraph :: a grpah which already has the cost info
     @return:
         a cumilative score
 
     depends on _GE.graph : the augmented graph
     """
-    graph = _GE.graph
+
     cumilative_cost = 0.0
     total_number_of_nodes = graph.number_of_nodes()
     total_number_of_edges = graph.number_of_edges()
     for node in subgraph.nodes():
-        cumilative_cost += _get_node_cost(node, graph, total_number_of_nodes)
+        cumilative_cost += _get_node_cost(node, supergraph, total_number_of_nodes)
     for edge in subgraph.edges(keys=True):
-        cumilative_cost += _get_edge_cost(edge, graph, total_number_of_edges)
+        cumilative_cost += _get_edge_cost(edge, supergraph, total_number_of_edges)
     return cumilative_cost
 
 
@@ -552,7 +570,7 @@ def _make_augmented_graph(K):
             elif ele.type == "edge" and ele.sub_type == "a":
                 aug_graph.add_edge(ele.n1, ele.n2, key=key,
                     cost=1, cursors=_coll.defaultdict(list))
-
+    _GE.graph = aug_graph
     return aug_graph
 
 
@@ -798,7 +816,8 @@ def _k_ranked(LG):
     else:
         return LG[0]
 
-    
+
+## not needed since LQ is a heap  
 def _min_cost_cursor(LQ):
     """
     function to find the minimum cost cursor
