@@ -12,15 +12,15 @@ class _GE:
     an edge is of form ("edge", node1, node2, key)
     """
     graph = None
-    cnodes = None  # independently obtained
-    vnodes = None  # independently obtained
+    cnodes = None  # independently obtained 
+    vnodes = None  # independently obtained 
     redges = None  # dependent on cnodes
     aedges = None  # dependent on vnodes
 
     ### functions asscoiated with GE object
     def __init__(self,ele_type,key,n1=None,n2=None,sub_type=None):
-        self.type = ele_type  # Grpah element type: node or edge
-        self.key = key  # Grpah element label (URI or literal)
+        self.type = ele_type  # Graph element type: node or edge
+        self.key = key  # Graph element label (URI or literal)
         if self.type == "edge":
             self.n1 = n1  # label of one vertex of edge
             self.n2 = n2  # label of another vertex of edge
@@ -84,6 +84,38 @@ class _GE:
             self.graph.node[self.key]["cursors"][c.i].append(c)
         elif self.type == "edge":
             self.graph.edge[self.n1][self.n2][self.key]["cursors"][c.i].append(c)
+			
+			
+	def is_connected(self,m):
+        """
+        checks if the graph element is connected to all the keywords along the
+        path already visited which is tracked by the cursors.
+
+        self is a connecting element if all self.Ci are not empty, i.e. 
+        for every keyword i, there is at least one cursor
+
+        @param
+            m :: no of keywords as int
+        @return
+            boolean value
+
+        """
+        # obtain a list of list of cursors
+        # each list within a list represents a list of cursors from keyword i.
+        list_of_lists = self.cursors.values()
+
+        # first check if self has been visited from all m keywords
+        if len(list_of_lists) == m:
+            # check if self is still connected to all the m keywords
+            # check if there is atleast one cursor in the path to each keyword
+            # i.e., length of every list within the list is >0
+            num_keywords_connected = sum([1 for i in list_of_lists if len(i)>0])
+
+            # self is connected if it is connected to all the m keywords
+            if num_keywords_connected == m:
+                return True
+        # self is not connected if it has not even been visited by all keywords
+        return False
 
 
     ### static functions
@@ -295,56 +327,77 @@ def get_keyword_index():
 
 
 def _extract_keywords(uri):
-
-    """ 
+	""" 
     function that fetches keywords from URI
     @param:
         uri : the uri that needs to be processed to fetch keywords
     @return:
         returns a list of keywords keyword_list = [k1,k2,k3,..kn]
-
-    """
-            
-    # fetching the last keywords part of the predicate URI
-    aedge_split = aedge.split("/")
-    keywords_token_aedge = aedge_split[len(aedge_split)-1]
+	"""
+	
+	# fetching the last keywords part of the predicate URI by splitting on "/"
+	uri_split = uri.split("/")
+	keywords_token_uri = uri_split[len(uri_split)-1]
+	
+	# seperating the keywords on "."
+	keyword_list = keywords_token_uri.split(".")
+	keyword_list_length = len(keyword_list)
+	
+	#process each keyword
+	for keyword_list_index in range(0,keyword_list_length):
+		#replace underscores with whitespaces
+		keyword_list[keyword_list_index] = keyword_list[keyword_list_index].replace("_"," ")
         
-    # seperating the keywords and cleaning them
-    keyword_list = keywords_token_aedge.split(".")
-    keyword_list_length = len(keyword_list)
-    for keyword_list_index in range(0,keyword_list_length):
-        keyword_list[keyword_list_index] = keyword_list[keyword_list_index].replace("_"," ")
-        #checking for the hash part of the URI 
-        if re.search(r'[a-z]+#[a-z]+',keyword_list[keyword_list_index]):
-            hash_position = keyword_list[keyword_list_index].index("#")
-            if hash_position > 0 :
-                cap_words_positions = re.search(r'[A-Z]+[a-z]*',keyword_list[keyword_list_index][hash_position+1:])
-                if cap_words_positions != None:
-                    #print cap_words_positions.span()
-                    if len(cap_words_positions.span()) >1:
-                        sub_keyword = keyword_list[keyword_list_index][hash_position+1:cap_words_positions.span()[0]+hash_position+1]
-                        for cap_word_position in range(0,len(cap_words_positions.span())-1):
-                            sub_keyword  = sub_keyword +  " " + keyword_list[keyword_list_index][(hash_position+1+cap_words_positions.span()[cap_word_position]):(hash_position+1+cap_words_positions.span()[cap_word_position+1])].lower()
-                            keyword_list.append(sub_keyword)
-                else:
-                    sub_keyword = keyword_list[keyword_list_index][hash_position+1:]
-                    keyword_list.append(sub_keyword)
-
-                keyword_list[keyword_list_index] = keyword_list[keyword_list_index][:hash_position]
-
+		#checking for the hash part of the URI 
+		if _re.search(r'[a-z]+#[a-z]+',keyword_list[keyword_list_index]):
+			pre_hash_keyword,post_hash_keyword = _clean_hash(keyword_list[keyword_list_index])
+			keyword_list[keyword_list_index] = pre_hash_keyword
+			keyword_list.append(post_hash_keyword)
+        
         else:
-            cap_words_positions = re.search(r'[A-Z]+[a-z]*',keyword_list[keyword_list_index])
-            if cap_words_positions != None:
-                #print cap_words_positions.span()
-                if len(cap_words_positions.span()) >1:
-                    sub_keyword = keyword_list[keyword_list_index][:cap_words_positions.span()[0]]
-                    for cap_word_position in range(0,len(cap_words_positions.span())-1):
-                        sub_keyword  = sub_keyword +  " " + keyword_list[keyword_list_index][(cap_words_positions.span()[cap_word_position]):(cap_words_positions.span()[cap_word_position+1])].lower()
-                    
-                    keyword_list[keyword_list_index] = sub_keyword
-                                                
-        #print keyword_list
-        return keyword_list
+			#check for camelCases
+			sub_keyword = _clean_camelCase(keyword_list[keyword_list_index])
+			keyword_list[keyword_list_index] = sub_keyword
+	return keyword_list
+		
+	
+def _clean_hash(keyword):
+	"""
+	function that looks for hashes and seperates the keywords
+	@param:
+		keyword:: a string which has to be inspected for "#"
+	@return:
+		pre_hash_keyword:: the key word before "#"
+		post_hash_keyword::the key word after "#"
+	"""
+		
+	hash_position = keyword.index("#")
+	pre_hash_keyword = keyword[:hash_position]
+	post_hash_keyword = keyword[hash_position+1:]
+	pre_hash_keyword = _clean_camelCase(pre_hash_keyword)
+	post_hash_keyword = _clean_camelCase(post_hash_keyword)
+	return pre_hash_keyword,post_hash_keyword
+	
+	
+def _clean_camelCase(keyword):
+	"""
+	function looks for camelCase in the keywords and uncamelCases them
+	@param:
+		keyword::The key word that needs to be checked foe camelCase
+	@return:
+		The cleaned keyword
+	"""
+	cap_words_positions = _re.search(r'[A-Z]+[a-z]*',keyword)
+	if cap_words_positions != None:
+        #extracting the subwords from camelCase and converting them to normal phrases
+		cap_pos_tuple = cap_words_positions.span()
+		cap_pos_tuple = cap_pos_tuple + (len(keyword),)
+		if len(cap_pos_tuple) >1:
+			sub_keyword = keyword[:cap_pos_tuple[0]]
+			for cap_word_position in range(0,len(cap_pos_tuple)-1):
+				sub_keyword  = sub_keyword +  " " + keyword[(cap_pos_tuple[cap_word_position]):(cap_pos_tuple[cap_word_position+1])].lower()
+			keyword = sub_keyword
+	return keyword
 
 
 ### GRAPH SCHEMA INDEXING ###
@@ -595,37 +648,6 @@ def _alg1(num, dmax, aug_graph, K):
 #############################################################################################################################
 #algo2
 ##############################################################################################################################	
-def is_connected(self,m):
-        """
-        checks if the graph element is connected to all the keywords along the
-        path already visited which is tracked by the cursors.
-
-        self is a connecting element if all self.Ci are not empty, i.e. 
-        for every keyword i, there is at least one cursor
-
-        @param
-            m :: no of keywords as int
-        @return
-            boolean value
-
-        """
-        # obtain a list of list of cursors
-        # each list within a list represents a list of cursors from keyword i.
-        list_of_lists = self.cursors.values()
-
-        # first check if self has been visited from all m keywords
-        if len(list_of_lists) == m:
-            # check if self is still connected to all the m keywords
-            # check if there is atleast one cursor in the path to each keyword
-            # i.e., length of every list within the list is >0
-            num_keywords_connected = sum([1 for i in list_of_lists if len(i)>0])
-
-            # self is connected if it is connected to all the m keywords
-            if num_keywords_connected == m:
-                return True
-        # self is not connected if it has not even been visited by all keywords
-        return False
-
 
 
 def _cursor_combinations(n):
@@ -654,22 +676,20 @@ def _cursor_combinations(n):
     list_of_lists = n.cursors.values()
     return _it.product(*list_of_lists)
 	
-def _build_all_paths(all_combinations_list):
+def _build_all_paths(m_cursor_list):
 	"""
-	A function that builds a set of paths for all the combinatios
+	A function that builds a set of paths for the given list of m crsor list
 	
 	@param: 
-		all_combinations_list:: A list of list of m-cusor paths 
+		m_cursor_list:: A list of m-cusor paths 
 	@return:
 		A list of list of m-graph paths 
 	"""
-	subgraphs_path_collection = []
-	for m_cursor_set in all_combinations_list:
-		subgraph_paths =[]
-		for cursor in m_cursor_set:
-			subgraph_paths.append(_build_path_from_cursor(cursor))
-		subgraphs_path_collection.append(subgraph_paths)
-	return subgraphs_path_collection
+	
+	subgraph_paths =[]
+	for cursor in m_cursor_set:
+		subgraph_paths.append(_build_path_from_cursor(cursor))
+	return subgraphs_paths
 
 def _build_path_from_cursor(cursor):
 	"""
@@ -709,7 +729,13 @@ def _merge_paths_to_graph(paths):
 	return subgraph
 
 def _update_cost_of_subgraphs(subgraph_list):
-
+	"""
+	function to update the cost of subgraph
+	@param:
+		A list of paths
+	@return:
+		A list of tuples (subgraph,cost)
+	"""
 	cost_agumented_subgraph_list = []
 	for subgraph in subgraph_list:
 		cost = _get_subgraph_cost(subgraph,_summary_graph)
@@ -718,10 +744,24 @@ def _update_cost_of_subgraphs(subgraph_list):
 	return cost_agumented_subgraph_list
 		
 def _choose_top_k_sub_graphs(cost_agumented_subgraph_list,k):
+	"""
+	function to fetch the best k subgraphs
+	@param:
+		A list subgraphs agumented with cost
+	@return:
+		A list of subgraphs with k best subgraphs
+	"""
 	cost_agumented_subgraph_list.sort(key=ret_cost)
 	return cost_agumented_subgraph_list[len(cost_agumented_subgraph_list)-k-1:]
 	
 def _ret_cost(a):
+	"""
+	function to return
+	@param:
+		tuple to be sorted in the list
+	@return:
+		A key, i.e cost
+	"""
 	return a[1]
 	
 
