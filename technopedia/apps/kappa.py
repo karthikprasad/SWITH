@@ -141,6 +141,7 @@ class _GE:
             list of entity nodes to which given cnode belongs.
 
         """
+
         type_predicate = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
         entity_nodes = data.subjects(object=cnode, predicate=type_predicate)["response"]
         return list(set(entity_nodes))
@@ -472,8 +473,12 @@ def _get_node_cost(node, graph, total_number_of_nodes):
     @return:
         a score in the range 0-1
 
+    cost of a BNode and Thing is 0
+
     """
-    return 1 - len(_GE.entity_nodes(node)/(total_number_of_nodes +0.0))
+    if node == "BNode" or node == "Thing":
+        return 0
+    return 1 - len(_GE.entity_nodes(node))/(total_number_of_nodes +0.0)
 
 
 def _attach_edge_costs(graph):
@@ -901,9 +906,9 @@ def _alg2(n, m, LG, LQ, k, R):
 
 if __name__ == "__main__":
     
-    k = _get_keyword_index().keys()
-    print k
+    k = _get_keyword_index()
     import matplotlib.pyplot as plt
     g = _get_summary_graph()
-    _nx.draw_networkx(g, withLabels=True)
+    g = _attach_costs(g)
+    #_nx.draw_networkx(g, withLabels=True)
     #plt.show()
