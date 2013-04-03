@@ -68,7 +68,7 @@ class _GE:
         """
         neighbours = []
         if self.type == "node":
-            connected_edges = _GE.graph.in_edges([self.key], keys=True) + 
+            connected_edges = _GE.graph.in_edges([self.key], keys=True) + \
                 _GE.graph.out_edges([self.key], keys=True)
             # GEfy edges
             for edge in connected_edges:
@@ -127,7 +127,7 @@ class _GE:
 
     @staticmethod
     def get_all_value_nodes():
-        return data.literals()["reponse"]
+        return data.literals()["response"]
 
 
     @staticmethod
@@ -150,7 +150,7 @@ class _GE:
     def get_all_edges():
         redges = set()
         aedges = set()
-        triples = data.triples()
+        triples = data.triples()["response"]
         for row in triples:
             edge = (row[0], row[2])  #edge = (subj, obj)
             if _GE.is_aedge(edge):
@@ -166,7 +166,7 @@ class _GE:
                 node_pairs = _it.product(_GE.class_types(row[0]), 
                     _GE.class_types(row[2]))
                 for pair in node_pairs:
-                    regdes.add((pair[0], pair[1], row[1]))
+                    redges.add((pair[0], pair[1], row[1]))
 
         return list(redges), list(aedges)
 
@@ -185,7 +185,7 @@ class _GE:
         """
         if data.Term.type(node) == "BNode":
             return True
-        elif data.Term.type(node) == "URI" and node not in _GE.cnodes
+        elif data.Term.type(node) == "URI" and node not in _GE.cnodes:
             return True
         return False
 
@@ -263,7 +263,7 @@ _GE.redges, _GE.aedges = _GE.get_all_edges()
 ######## SECTION 4 - INDEXING GRAPH DATA ########
 ### KEYWORD INDEXING ###
 
-def get_keyword_index():
+def _get_keyword_index():
     """
     function which maps keyword to Graph Elements (_GE objects)
     the graph elements are cnodes, vnodes, redges and aedges
@@ -280,7 +280,7 @@ def get_keyword_index():
             index[keyword].append(_GE("node",cnode,sub_type="c"))
 
     for vnode in _GE.vnodes:
-        keywords = _extract_keywords(vnode)
+        keywords = vnode # _extract_keywords_from_literal(vnode)
         for keyword in keywords:
             index[keyword].append(_GE("node",vnode,sub_type="v"))
 
@@ -288,7 +288,7 @@ def get_keyword_index():
         n1 = redge[0]
         n2 = redge[1]
         key = redge[2]
-        keywords = _extract_keywords(redge)
+        keywords = _extract_keywords(redge[2])
         for keyword in keywords:
             index[keyword].append(_GE("edge",key,n1,n2,sub_type="r"))
 
@@ -296,7 +296,7 @@ def get_keyword_index():
         n1 = aedge[0]
         n2 = aedge[1]
         key = aedge[2]
-        keywords = _extract_keywords(aedge)
+        keywords = _extract_keywords(aedge[2])
         for keyword in keywords:
             index[keyword].append(_GE("edge",key,n1,n2,sub_type="a"))
 
@@ -375,7 +375,7 @@ def _clean_camelCase(keyword):
         if len(cap_pos_tuple) >1:
             sub_keyword = keyword[:cap_pos_tuple[0]]
             for cap_word_position in range(0,len(cap_pos_tuple)-1):
-                sub_keyword  = sub_keyword +  " " + 
+                sub_keyword  = sub_keyword +  " " + \
                     keyword[(cap_pos_tuple[cap_word_position]):(cap_pos_tuple[cap_word_position+1])].lower()
             keyword = sub_keyword
     return keyword
@@ -440,8 +440,9 @@ def _get_node_cost(node, graph, total_number_of_nodes):
         total_number_of_nodes: total_number_of_nodes in the graph
     @return:
         a score in the range 0-1
+
     """
-    return 1 - len(_GE.entity_nodes(node)/(total_number_of_nodes +0.0)
+    return 1 - len(_GE.entity_nodes(node)/(total_number_of_nodes +0.0))
 
 
 def _attach_edge_costs(graph):
@@ -458,11 +459,11 @@ def _attach_edge_costs(graph):
         n1 = e[0]
         n2 = e[1]
         key = e[2]
-        graph.edge[n1][n2][key]["cost"] = 
+        graph.edge[n1][n2][key]["cost"] = \
             _get_edge_cost(e, graph, total_number_of_edges)
     return graph
-    
-    
+
+
 def _get_edge_cost(edge, graph, total_number_of_edges):
     """
     function which returns the cost associated with the node
@@ -484,7 +485,7 @@ def _get_edge_cost(edge, graph, total_number_of_edges):
 
     for neighbour_edge in adjacent_edges:
         if _GE.is_redge(neighbour_edge):  ## ??????????????????????????????????????????????????????????????????
-            redge_count + = 1
+            redge_count += 1
     return 1 - redge_count/(total_number_of_edges+0.0)
 
 
@@ -552,7 +553,7 @@ def _make_augmented_graph(K):
         aug_graph :: networkx graph with keyword elements attached
 
     """
-    aug_graph = <get summry graph copy>
+    aug_graph = _summary_graph.copy()
     for Ki in K:
         for ele in Ki:
             # if element is a V-Node
@@ -850,7 +851,7 @@ def _alg2(n, m, LG, LQ, k, R):
     lowest_cost = _heapq.nmsmallest(1,LQ).cost
     
     if highest_cost < lowest_cost:
-        for G in LG do
+        for G in LG:
             #add query computed from subgraph
             R.append(_map_to_query(G[0]))
 
@@ -868,7 +869,9 @@ def _alg2(n, m, LG, LQ, k, R):
 
 
 if __name__ == "__main__":
-        import matplotlib.pyplot as plt
-        g = _get_summary_graph()
-        _nx.draw(g)
-        plt.show()
+    k = _get_keyword_index().keys()
+    print k
+    import matplotlib.pyplot as plt
+    g = _get_summary_graph()
+    _nx.draw_networkx(g, withLabels=True)
+    #plt.show()

@@ -13,7 +13,7 @@ import simplejson as _simplejson
 
 
 # database name and connection string
-_NAME = "tech_fb"
+_NAME = "topk"
 _CONN_STR = "host=localhost,user=root,password=root"
 
 # global variable (module-level)
@@ -732,4 +732,4 @@ if __name__ == "__main__":
     print len(l)
     print time.time()-t
     '''
-
+    
