@@ -2,6 +2,7 @@ import networkx as _nx
 import collections as _coll
 import itertools as _it
 import re as _re
+import heapq as _heapq
 
 from technopedia import data
 
@@ -538,12 +539,12 @@ def _get_subgraph_cost(subgraph, supergraph):
     """
 
     cumilative_cost = 0.0
-    total_number_of_nodes = graph.number_of_nodes()
-    total_number_of_edges = graph.number_of_edges()
-    for node in subgraph.nodes():
-        cumilative_cost += _get_node_cost(node, supergraph, total_number_of_nodes)
-    for edge in subgraph.edges(keys=True):
-        cumilative_cost += _get_edge_cost(edge, supergraph, total_number_of_edges)
+    for n in subgraph.nodes(data=True):
+        print "sub::"+str(n)
+        cumilative_cost += 1#n[1]['cost']
+    for e in subgraph.edges(keys=True, data=True):
+        #print "pred::"+str(e[3])
+        cumilative_cost += 1#e[3]['cost']
     return cumilative_cost
 
 
@@ -633,12 +634,12 @@ class _Cursor:
         ancestor_list = []
         p = self.parent
         while p is not None:
-            ancestor_list.append(p)
+            ancestor_list.append(p.graph_element.key)
             p = p.parent
         return ancestor_list
 
 
-def _alg1(num, dmax, aug_graph, K):
+def _alg1(num, dmax, K):
     m = len(K)
     LQ = []
     LG = [] # global var from paper
@@ -649,7 +650,7 @@ def _alg1(num, dmax, aug_graph, K):
         i += 1
         for k in Ki:
             _heapq.heappush(LQ, _Cursor(k,k,i,None,k.cost,0))
-
+    
     # while LQ not empty
     while len(LQ) > 0:
         c = _heapq.heappop(LQ)
@@ -657,18 +658,50 @@ def _alg1(num, dmax, aug_graph, K):
         if c.distance < dmax:
             n.add_cursor(c)
             neighbours = n.neighbours
-            neighbours.remove(c.parent) # reomove the parent from list
+            # if the cursor has a parent (when it is not the begining)
+            # reomove the parent from list
+            if c.parent is not None:
+                _remove_ge(c.parent.graph_element, neighbours)
+            
+            print "element:: " + n.key
+            print "neigh:: " + str([ne.key for ne in neighbours])
+
             # if neighbours not empty
             if len(neighbours) > 0:
                 for neighbour in neighbours:
                     # take care of cyclic paths
-                    if neighbour not in c.ancestors:
+                    if neighbour.key not in c.ancestors:
                         # add new cursor to LQ
                         _heapq.heappush(LQ, _Cursor(neighbour, c.keyword_element,
-                            c.i, n, c.cost+neighbour.cost, c.distance+1))
+                            c.i, c, c.cost+neighbour.cost, c.distance+1))
+            print
+            print "arg passed to alg2::"
+            print (n.key,m,LG,LQ,num,R)
+            print "==================="
+            print
             R,LG = _alg2(n,m,LG,LQ,num,R)
 
     return R
+
+
+def _remove_ge(ge, ge_list):
+    """
+    function to remove a GraphElement (_GE obj) from a list of _GE objects
+    based on the key.
+
+    used to remove the parent _GE from the list of neighbours _GEs
+
+    @param
+        ge :: _GE object
+        g_list :: list of _GE objects
+
+    returns nothing; simply alters the list of _GEs
+
+    """
+    for ele in ge_list:
+        if ele.key == ge.key:
+            ge_list.remove(ele)
+            break
 
 
 ### alg 2 functions ###
@@ -677,7 +710,7 @@ def _alg1(num, dmax, aug_graph, K):
 #algo2
 ##############################################################################################################################  
 
-def is_connected(n,m):
+def _is_connected(n,m):
     """
     checks if the graph element is connected to all the keywords along the
     path already visited which is tracked by the cursors.
@@ -748,9 +781,9 @@ def _build_m_paths(m_cursor_list):
     """
     
     subgraph_paths =[]
-    for cursor in m_cursor_set:
+    for cursor in m_cursor_list:
         subgraph_paths.append(_build_path_from_cursor(cursor))
-    return subgraphs_paths
+    return subgraph_paths
 
 
 def _build_path_from_cursor(cursor):
@@ -766,13 +799,14 @@ def _build_path_from_cursor(cursor):
     """
     destination = cursor.keyword_element
     source = cursor.graph_element
-    path = nx.MultiDiGraph(label="path_"+source.key+"_to_"+destination.key)
+    path = _nx.MultiDiGraph(label="path_"+source.key+"_to_"+destination.key)
     current_cursor = cursor
-    while current_cursor != None:
-        if current_cursor.type == "node":
+    while current_cursor is not None:
+        if current_cursor.graph_element.type == "node":
             path.add_node(current_cursor.graph_element.key, 
                 cost = current_cursor.graph_element.cost)
-        else:
+        
+        elif current_cursor.graph_element.type == "edge":
             path.add_edge(current_cursor.graph_element.n1,
                 current_cursor.graph_element.n2,
                 key=current_cursor.graph_element.key,
@@ -804,7 +838,7 @@ def _update_cost_of_subgraph(subgraph):
     @return:
         A tuple (subgraph,cost)
     """
-    cost = _get_subgraph_cost(subgraph)
+    cost = _get_subgraph_cost(subgraph, _GE.graph)
     augmented_tuple = (subgraph,cost)
     return augmented_tuple
 
@@ -813,19 +847,19 @@ def _choose_top_k_sub_graphs(cost_augmented_subgraph_list, k):
     """
     function to fetch the best k subgraphs
     @param:
-        cost_agumented_subgraph_list :: A list subgraphs augmented with cost 
+        cost_augmented_subgraph_list :: A list subgraphs augmented with cost 
         [(subgraph,cost),...]
         k :: Number of quries required
     @return:
-        A list k subgraphs agumented with cost
+        A list k subgraphs augmented with cost
         [(subgraph1,cost1),...(subgraphk,costk)]
 
     """
-    cost_agumented_subgraph_list.sort(key=_ret_cost)
-    if k <= len(cost_agumented_subgraph_list):
-        return cost_agumented_subgraph_list[len(cost_agumented_subgraph_list)-k:]
+    cost_augmented_subgraph_list.sort(key=_ret_cost)
+    if k <= len(cost_augmented_subgraph_list):
+        return cost_augmented_subgraph_list[len(cost_augmented_subgraph_list)-k:]
     else:
-        return cost_agumented_subgraph_list
+        return cost_augmented_subgraph_list
 
 
 def _ret_cost(a):
@@ -840,56 +874,60 @@ def _ret_cost(a):
     return a[1]
 
 
-def _k_ranked(LG):
+def _k_ranked(LG,k):
     """
     function to return the kth ranked element
     @param:
-        LG :: A list of subgraphs agumented with cost
+        LG :: A list of subgraphs augmented with cost
     @return:
         Cost of the kth subgraph
     """
+    print LG
     if len(LG) == 0:
         return -1
     elif k <= len(LG):
-        return LG[len(LG)-k].cost
+        return LG[len(LG)-k][1]
     else:
-        return LG[len(LG)-1].cost
+        return LG[len(LG)-1][1]
 
 def _initialize_const_var(subgraph):
-	i = 0
-	node_dict = _coll.defaultdict(str)
-	for node in subgraph.nodes():
-		variable = "var" + str(i)
-		i = i+1
-		constant = node
-		node_dict[constant] = variable
-	return node_dict
+    i = 0
+    node_dict = _coll.defaultdict(str)
+    for node in subgraph.nodes():
+        variable = "var" + str(i)
+        i = i+1
+        constant = node
+        node_dict[constant] = variable
+    return node_dict
 
 
 def _map_edge(e,node_dict):
     edge_query = ""
-	if _GE.is_aedge(e):
-		edge_query += "type("+node_dict[e[0]]+","+e[0]+")" + " ^ " + \
+    if _GE.is_aedge(e):
+        edge_query += "type("+node_dict[e[0]]+","+e[0]+")" + " ^ " + \
             e[2]+"("+node_dict[e[0]]+","+e[1]+")"
-	elif _GE.is_redge(e):
-		edge_query += "type("+node_dict[e[0]]+","+e[0]+")" + " ^ " + \
+    elif _GE.is_redge(e):
+        edge_query += "type("+node_dict[e[0]]+","+e[0]+")" + " ^ " + \
             "type("+node_dict[e[1]]+","+e[1]+")" + " ^ " + \
             e[2]+"("+node_dict[e[0]]+","+node_dict[e[1]]+")"
     return edge_query
 
 
 def _map_to_query(G):
-	query_str = ""
-	node_dict = _initialize_const_var(G)
-	for edge in G.edges(keys=True):
-		query_str += _map_edge(edge,node_dict) + " ^ " 
-	query_str = query_str[:len(query_str)-1]
-	return query_str
-		
-		
+    print type(G)
+    import matplotlib.pyplot as plt
+    _nx.draw_networkx(G, withLabels=True)
+    plt.show()
+    query_str = ""
+    node_dict = _initialize_const_var(G)
+    for edge in G.edges(keys=True):
+        query_str += _map_edge(edge,node_dict) + " ^ " 
+    query_str = query_str[:len(query_str)-1]
+    return query_str
+        
+        
 
 def _alg2(n, m, LG, LQ, k, R):
-
     if _is_connected(n,m):
         #process new subgraphs in n
         C =_cursor_combinations(n)
@@ -901,7 +939,11 @@ def _alg2(n, m, LG, LQ, k, R):
     
     LG = _choose_top_k_sub_graphs(LG,k)
     highest_cost = _k_ranked(LG,k)
-    lowest_cost = _heapq.nmsmallest(1,LQ).cost
+    # if the cursor list LQ is empty
+    if len(LQ) == 0:
+        lowest_cost = highest_cost + 1
+    else:
+        lowest_cost = _heapq.nsmallest(1,LQ)[0].cost
     
     if highest_cost < lowest_cost:
         for G in LG:
@@ -916,16 +958,27 @@ def _alg2(n, m, LG, LQ, k, R):
 
 
 # PREPROCESSED DATASTRUCTURES
-#_keyword_index = _get_keyword_index()
-#_summary_graph = _get_summary_graph()
-#_summary_graph = _attach_costs(_summary_graph)
+_keyword_index = _get_keyword_index()
+_summary_graph = _get_summary_graph()
+_summary_graph = _attach_costs(_summary_graph)
 
 
 if __name__ == "__main__":
     
-    k = _get_keyword_index()
+    #print
+    #print _keyword_index
     import matplotlib.pyplot as plt
-    g = _get_summary_graph()
-    g = _attach_costs(g)
-    #_nx.draw_networkx(g, withLabels=True)
+    #_nx.draw_networkx(_summary_graph, withLabels=True)
     #plt.show()
+    keyword_list = ["2006", "p  cimiano", "aifb"]
+    K = _get_keyword_elements(keyword_list)
+    #print
+    #print K
+
+    _make_augmented_graph(K)
+    #_nx.draw_networkx(_GE.graph, withLabels=True)
+    #plt.show()
+
+    R=_alg1(1,15,K)
+    print R
+
