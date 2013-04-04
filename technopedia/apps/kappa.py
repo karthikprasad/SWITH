@@ -162,6 +162,14 @@ class _GE:
 
     @staticmethod
     def get_all_edges():
+        """
+        function returns a list of redges and aedges from the dataset
+        @return
+            list of redges, list of aedges
+        each edge is a tuple of form (n1,n2,edge-label)
+        here, n1 is cnode
+              n2 is a cnode in redge and vnode in aedge
+        """
         redges = set()
         aedges = set()
         triples = data.triples()["response"]
@@ -533,7 +541,7 @@ def _get_edge_cost(edge, graph, total_number_of_edges):
     adjacent_edges.remove(edge)
 
     for neighbour_edge in adjacent_edges:
-        if _GE.is_redge(neighbour_edge):  ## ??????????????????????????????????????????????????????????????????
+        if _GE.is_redge(neighbour_edge):
             redge_count += 1
     return 1 - redge_count/(total_number_of_edges+0.0)
 
@@ -950,44 +958,69 @@ def _initialize_const_var(subgraph):
 
 
 def _map_edge(e,node_dict):
-    edge_query = ""
-    if _GE.is_aedge(e):
+    """
+    function which maps a given edge to a set of conjunctive query predicates
+    @param
+        e :: a networkx edge with key info
+        node_dict :: a dictionary of nodes and their associated variables
+
+    @return
+        edge_query :: list of conjunctive query predicates for the edge
+    """
+    ##########################
+    #print e
+    ##########################
+    edge_query = []
+    if e in _GE.aedges:
+        ##########################
+        #print "\t"+str(e)
+        ##########################
         # e[0] is cnode label
         # e[1] is vnode label
         # e[2] is edge label
         # aedge -> edge(var(n1), vnode label)
-        edge_query += e[2]+"("+node_dict[e[0]]+","+e[1]+")"
+        edge_query.append(e[2]+"("+node_dict[e[0]]+","+e[1]+")")
         # handle class BNode
         if e[0] != "BNode":
             # type(var(n1), cnode label)
-            edge_query += " ^ " + "type("+node_dict[e[0]]+","+e[0]+")"
+            edge_query.append("type("+node_dict[e[0]]+","+e[0]+")")
 
-    elif _GE.is_redge(e):
+    elif e in _GE.redges:
+        ##########################
+        #print "\t"+str(e)
+        ##########################
         # e[0] is cnode1 label
         # e[1] is cnode2 label
         # e[2] is edge label
         # redge -> edge(var(n1), var(n2))
-        edge_query += e[2]+"("+node_dict[e[0]]+","+node_dict[e[1]]+")"
+        edge_query.append(e[2]+"("+node_dict[e[0]]+","+node_dict[e[1]]+")")
         if e[0] != "BNode":
-            edge_query += " ^ " + "type("+node_dict[e[0]]+","+e[0]+")"
+            edge_query.append("type("+node_dict[e[0]]+","+e[0]+")")
         if e[1] != "BNode":
-            edge_query += " ^ " + "type("+node_dict[e[1]]+","+e[1]+")"
+            edge_query.append("type("+node_dict[e[1]]+","+e[1]+")")
     
     return edge_query
 
 
 def _map_to_query(G):
+    """
+    function which maps a graph to a conjunctive query.
+    @param
+        G :: networkx graph
+    @return:
+        conj_query :: a list of conj query predicates
+    """
     ##########################
     #import matplotlib.pyplot as plt
     #_nx.draw_networkx(G, withLabels=True)
     #plt.show()
     ##########################
-    query_str = ""
-    node_dict = _initialize_const_var(G)
+    conj_query = []
+    node_dict = _initialize_const_var(G)  # node_dict is a dict where each node
+                                          # has a variable associated with it
     for edge in G.edges(keys=True):
-        query_str += _map_edge(edge,node_dict) + " ^ " 
-    query_str = query_str[:len(query_str)-1]
-    return query_str
+        conj_query += _map_edge(edge,node_dict)
+    return list(set(conj_query))
         
         
 
@@ -1059,8 +1092,8 @@ _summary_graph = _attach_costs(_summary_graph)
 
 if __name__ == "__main__":
     
-    #print
-    #print _keyword_index
+    print
+    print _keyword_index
     #import matplotlib.pyplot as plt
     #_nx.draw_networkx(_summary_graph, withLabels=True)
     #plt.show()
@@ -1087,5 +1120,7 @@ if __name__ == "__main__":
     #plt.show()
 
     R=_alg1(1,15,K)
+    print
+    print
     print R
 
