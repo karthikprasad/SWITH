@@ -526,23 +526,21 @@ def _get_edge_cost(edge, graph, total_number_of_edges):
     return 1 - redge_count/(total_number_of_edges+0.0)
 
 
-def _get_subgraph_cost(subgraph, supergraph):
+def _get_subgraph_cost(graph):
     """
     function which returns the cost of the subgraph
     @param:
-        subgraph :: the subgraph for which cost needs to be computed
-        supergraph :: a grpah which already has the cost info
+        graph :: the graph for which cost needs to be computed
     @return:
         a cumilative score
 
-    depends on _GE.graph : the augmented graph
     """
 
     cumilative_cost = 0.0
-    for n in subgraph.nodes(data=True):
-        print "sub::"+str(n)
+    for n in graph.nodes(data=True):
+        print "node::"+str(n)
         cumilative_cost += 1#n[1]['cost']
-    for e in subgraph.edges(keys=True, data=True):
+    for e in graph.edges(keys=True, data=True):
         #print "pred::"+str(e[3])
         cumilative_cost += 1#e[3]['cost']
     return cumilative_cost
@@ -663,8 +661,8 @@ def _alg1(num, dmax, K):
             if c.parent is not None:
                 _remove_ge(c.parent.graph_element, neighbours)
             
-            print "element:: " + n.key
-            print "neigh:: " + str([ne.key for ne in neighbours])
+            #print "element:: " + n.key
+            #print "neigh:: " + str([ne.key for ne in neighbours])
 
             # if neighbours not empty
             if len(neighbours) > 0:
@@ -674,11 +672,11 @@ def _alg1(num, dmax, K):
                         # add new cursor to LQ
                         _heapq.heappush(LQ, _Cursor(neighbour, c.keyword_element,
                             c.i, c, c.cost+neighbour.cost, c.distance+1))
-            print
-            print "arg passed to alg2::"
-            print (n.key,m,LG,LQ,num,R)
-            print "==================="
-            print
+            #print
+            #print "arg passed to alg2::"
+            #print (n.key,m,LG,LQ,num,R)
+            #print "==================="
+            #print
             R,LG = _alg2(n,m,LG,LQ,num,R)
 
     return R
@@ -838,7 +836,7 @@ def _update_cost_of_subgraph(subgraph):
     @return:
         A tuple (subgraph,cost)
     """
-    cost = _get_subgraph_cost(subgraph, _GE.graph)
+    cost = _get_subgraph_cost(subgraph)
     augmented_tuple = (subgraph,cost)
     return augmented_tuple
 
