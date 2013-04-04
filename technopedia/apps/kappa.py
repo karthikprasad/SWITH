@@ -29,6 +29,18 @@ class _GE:
         self.sub_type = sub_type  # "c" or "v" for node; "a" or "r" for edge
 
 
+    def __str__(self):
+        t = "type="+str(self.type)
+        k = "key="+str(self.key)
+        if self.type == "node":
+            str_rep = str((t,k))
+        if self.type == "edge":
+            n1 = "n1="+str(self.n1)
+            n2 = "n2="+str(self.n2)
+            str_rep = str((t,k,n1,n2))
+        return str_rep
+
+
     @property
     def cost(self):
         """
@@ -538,11 +550,9 @@ def _get_subgraph_cost(graph):
 
     cumilative_cost = 0.0
     for n in graph.nodes(data=True):
-        print "node::"+str(n)
-        cumilative_cost += 1#n[1]['cost']
+        cumilative_cost += n[1]['cost']
     for e in graph.edges(keys=True, data=True):
-        #print "pred::"+str(e[3])
-        cumilative_cost += 1#e[3]['cost']
+        cumilative_cost += e[3]['cost']
     return cumilative_cost
 
 
@@ -627,12 +637,25 @@ class _Cursor:
         else:
             return 0
 
+    def __str__(self):
+        n = "n="+str(self.graph_element.key)
+        k = "k="+str(self.keyword_element.key)
+        i = "i="+str(self.i)
+        #p = "p="+str(self.parent)
+        c = "cost="+str(self.cost)
+        d = "dist="+str(self.distance)
+        return str((n,k,i,c,d))
+
     @property
     def ancestors(self):
+        """
+        property which returns the list ofstring representation of 
+        graph elements of the self's(cursor's) ancestors
+        """
         ancestor_list = []
         p = self.parent
         while p is not None:
-            ancestor_list.append(p.graph_element.key)
+            ancestor_list.append(str(p.graph_element))
             p = p.parent
         return ancestor_list
 
@@ -648,11 +671,19 @@ def _alg1(num, dmax, K):
         i += 1
         for k in Ki:
             _heapq.heappush(LQ, _Cursor(k,k,i,None,k.cost,0))
-    
+    ###################
+    #print "alg1: init"
+    #for c in LQ:
+    #    print c
+    #################
     # while LQ not empty
     while len(LQ) > 0:
         c = _heapq.heappop(LQ)
         n = c.graph_element
+        #################
+        print "========"
+        print n.key
+        #################
         if c.distance < dmax:
             n.add_cursor(c)
             neighbours = n.neighbours
@@ -660,24 +691,31 @@ def _alg1(num, dmax, K):
             # reomove the parent from list
             if c.parent is not None:
                 _remove_ge(c.parent.graph_element, neighbours)
-            
+            ##########################
             #print "element:: " + n.key
             #print "neigh:: " + str([ne.key for ne in neighbours])
-
+            ##########################
             # if neighbours not empty
             if len(neighbours) > 0:
                 for neighbour in neighbours:
                     # take care of cyclic paths
-                    if neighbour.key not in c.ancestors:
+                    if str(neighbour) not in c.ancestors:
                         # add new cursor to LQ
                         _heapq.heappush(LQ, _Cursor(neighbour, c.keyword_element,
                             c.i, c, c.cost+neighbour.cost, c.distance+1))
-            #print
-            #print "arg passed to alg2::"
-            #print (n.key,m,LG,LQ,num,R)
-            #print "==================="
-            #print
+            
+            #############
+            for c in LQ:
+                print c
+            print "arg passed to alg2::"
+            print (n.key,m,LG,LQ,num,R)
+            #############
             R,LG = _alg2(n,m,LG,LQ,num,R)
+            print "o/p from alg2:"
+            print "\tR :: "+str(R)
+            print "\tLG :: "+str(LG)
+            print "==================="
+            print
 
     return R
 
@@ -798,19 +836,31 @@ def _build_path_from_cursor(cursor):
     destination = cursor.keyword_element
     source = cursor.graph_element
     path = _nx.MultiDiGraph(label="path_"+source.key+"_to_"+destination.key)
+
     current_cursor = cursor
     while current_cursor is not None:
         if current_cursor.graph_element.type == "node":
+            # add node to path
             path.add_node(current_cursor.graph_element.key, 
                 cost = current_cursor.graph_element.cost)
         
         elif current_cursor.graph_element.type == "edge":
-            path.add_edge(current_cursor.graph_element.n1,
-                current_cursor.graph_element.n2,
-                key=current_cursor.graph_element.key,
-                cost=current_cursor.graph_element.cost)
+            n1 = current_cursor.graph_element.n1  # string (node uri-key)
+            n2 = current_cursor.graph_element.n2  # string (node uri-key)
+            edge_key=current_cursor.graph_element.key  # string (edge uri-key)
+            edge_cost=current_cursor.graph_element.cost
+            # first add the two nodes to the path
+            # if they dont already exist in the path
+            if n1 not in path.nodes():
+                path.add_node(n1, cost=0.0)  # cost is 0 coz the node has not
+                                             # yet been visited by the path
+            if n2 not in path.nodes():
+                path.add_node(n2, cost=0.0)  # cost is 0 coz the node has not
+                                             # yet been visited by the path
+            #then add the edge bertwwen them
+            path.add_edge(n1, n2, key=edge_key, cost=edge_cost)
         current_cursor = current_cursor.parent
-        
+
     return path
 
 
@@ -855,7 +905,7 @@ def _choose_top_k_sub_graphs(cost_augmented_subgraph_list, k):
     """
     cost_augmented_subgraph_list.sort(key=_ret_cost)
     if k <= len(cost_augmented_subgraph_list):
-        return cost_augmented_subgraph_list[len(cost_augmented_subgraph_list)-k:]
+        return cost_augmented_subgraph_list[:k]
     else:
         return cost_augmented_subgraph_list
 
@@ -880,13 +930,14 @@ def _k_ranked(LG,k):
     @return:
         Cost of the kth subgraph
     """
-    print LG
+    #print LG
     if len(LG) == 0:
         return -1
     elif k <= len(LG):
         return LG[len(LG)-k][1]
     else:
         return LG[len(LG)-1][1]
+
 
 def _initialize_const_var(subgraph):
     i = 0
@@ -927,10 +978,9 @@ def _map_edge(e,node_dict):
 
 
 def _map_to_query(G):
-    print type(G)
     import matplotlib.pyplot as plt
-    _nx.draw_networkx(G, withLabels=True)
-    plt.show()
+    #_nx.draw_networkx(G, withLabels=True)
+    #plt.show()
     query_str = ""
     node_dict = _initialize_const_var(G)
     for edge in G.edges(keys=True):
@@ -941,23 +991,51 @@ def _map_to_query(G):
         
 
 def _alg2(n, m, LG, LQ, k, R):
+    print
+    print "in alg2:"
     if _is_connected(n,m):
+        ###################
+        print "\tconntected"+str(n)
+        print
+        ##################
         #process new subgraphs in n
         C =_cursor_combinations(n)
         for c in C:
             paths = _build_m_paths(c)
             subgraph = _merge_paths_to_graph(paths)
+            ##########################
+            import matplotlib.pyplot as plt
+            _nx.draw_networkx(subgraph, withLabels=True)
+            plt.show()
+            #########################
             cost_augmented_tuple = _update_cost_of_subgraph(subgraph)
+            ##########################
+            print "\tcost aug"+str(cost_augmented_tuple)
+            print
+            ###########################
             LG.append(cost_augmented_tuple)
+            ###########################
+            print "\tLG"+str(LG)  # WORKS
+            print
+            ###########################
     
     LG = _choose_top_k_sub_graphs(LG,k)
+    ###########################
+    print "\tLG after choose topk :"+str(LG)  # WORKS
+    print "\tk :: "+str(k)
+    print
+    ###########################
     highest_cost = _k_ranked(LG,k)
     # if the cursor list LQ is empty
     if len(LQ) == 0:
         lowest_cost = highest_cost + 1
     else:
         lowest_cost = _heapq.nsmallest(1,LQ)[0].cost
-    
+    ################################
+    print "\thighest cost = " + str(highest_cost)
+    print "\tlowest cost = " + str(lowest_cost)
+    print
+    #############################
     if highest_cost < lowest_cost:
         for G in LG:
             #add query computed from subgraph
@@ -989,6 +1067,19 @@ if __name__ == "__main__":
     #print K
 
     _make_augmented_graph(K)
+    
+    print _GE.graph.adj
+    print "==========="
+    print "nodes"
+    for n in _GE.graph.nodes(data=True):
+        print n
+    print "==========="
+    print "edges"
+    for e in _GE.graph.edges(keys=True,data=True):
+        print e
+    print
+    print "################"
+    print
     #_nx.draw_networkx(_GE.graph, withLabels=True)
     #plt.show()
 
