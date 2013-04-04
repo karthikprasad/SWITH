@@ -681,8 +681,8 @@ def _alg1(num, dmax, K):
         c = _heapq.heappop(LQ)
         n = c.graph_element
         #################
-        print "========"
-        print n.key
+        #print "========"
+        #print n.key
         #################
         if c.distance < dmax:
             n.add_cursor(c)
@@ -702,21 +702,21 @@ def _alg1(num, dmax, K):
                     if str(neighbour) not in c.ancestors:
                         # add new cursor to LQ
                         _heapq.heappush(LQ, _Cursor(neighbour, c.keyword_element,
-                            c.i, c, c.cost+neighbour.cost, c.distance+1))
-            
-            #############
-            for c in LQ:
-                print c
-            print "arg passed to alg2::"
-            print (n.key,m,LG,LQ,num,R)
-            #############
+                            c.i, c, c.cost+neighbour.cost, c.distance+1))    
+            ##########################
+            #for c in LQ:
+            #    print c
+            #print "arg passed to alg2::"
+            #print (n.key,m,LG,LQ,num,R)
+            ##########################
             R,LG = _alg2(n,m,LG,LQ,num,R)
-            print "o/p from alg2:"
-            print "\tR :: "+str(R)
-            print "\tLG :: "+str(LG)
-            print "==================="
-            print
-
+            ##########################
+            #print "o/p from alg2:"
+            #print "\tR :: "+str(R)
+            #print "\tLG :: "+str(LG)
+            #print "==================="
+            #print
+            ##########################
     return R
 
 
@@ -930,7 +930,6 @@ def _k_ranked(LG,k):
     @return:
         Cost of the kth subgraph
     """
-    #print LG
     if len(LG) == 0:
         return -1
     elif k <= len(LG):
@@ -978,9 +977,11 @@ def _map_edge(e,node_dict):
 
 
 def _map_to_query(G):
-    import matplotlib.pyplot as plt
+    ##########################
+    #import matplotlib.pyplot as plt
     #_nx.draw_networkx(G, withLabels=True)
     #plt.show()
+    ##########################
     query_str = ""
     node_dict = _initialize_const_var(G)
     for edge in G.edges(keys=True):
@@ -991,39 +992,41 @@ def _map_to_query(G):
         
 
 def _alg2(n, m, LG, LQ, k, R):
-    print
-    print "in alg2:"
+    ##########################
+    #print
+    #print "in alg2:"
+    ##########################
     if _is_connected(n,m):
-        ###################
-        print "\tconntected"+str(n)
-        print
-        ##################
+        ##########################
+        #print "\tconntected"+str(n)
+        #print
+        ##########################
         #process new subgraphs in n
         C =_cursor_combinations(n)
         for c in C:
             paths = _build_m_paths(c)
             subgraph = _merge_paths_to_graph(paths)
             ##########################
-            import matplotlib.pyplot as plt
-            _nx.draw_networkx(subgraph, withLabels=True)
-            plt.show()
-            #########################
+            #import matplotlib.pyplot as plt
+            #_nx.draw_networkx(subgraph, withLabels=True)
+            #plt.show()
+            ##########################
             cost_augmented_tuple = _update_cost_of_subgraph(subgraph)
             ##########################
-            print "\tcost aug"+str(cost_augmented_tuple)
-            print
-            ###########################
+            #print "\tcost aug"+str(cost_augmented_tuple)
+            #print
+            ##########################
             LG.append(cost_augmented_tuple)
-            ###########################
-            print "\tLG"+str(LG)  # WORKS
-            print
-            ###########################
+            ##########################
+            #print "\tLG"+str(LG)  # WORKS
+            #print
+            ##########################
     
     LG = _choose_top_k_sub_graphs(LG,k)
     ###########################
-    print "\tLG after choose topk :"+str(LG)  # WORKS
-    print "\tk :: "+str(k)
-    print
+    #print "\tLG after choose topk :"+str(LG)  # WORKS
+    #print "\tk :: "+str(k)
+    #print
     ###########################
     highest_cost = _k_ranked(LG,k)
     # if the cursor list LQ is empty
@@ -1031,11 +1034,11 @@ def _alg2(n, m, LG, LQ, k, R):
         lowest_cost = highest_cost + 1
     else:
         lowest_cost = _heapq.nsmallest(1,LQ)[0].cost
-    ################################
-    print "\thighest cost = " + str(highest_cost)
-    print "\tlowest cost = " + str(lowest_cost)
-    print
-    #############################
+    ###########################
+    #print "\thighest cost = " + str(highest_cost)
+    #print "\tlowest cost = " + str(lowest_cost)
+    #print
+    ###########################
     if highest_cost < lowest_cost:
         for G in LG:
             #add query computed from subgraph
@@ -1058,7 +1061,7 @@ if __name__ == "__main__":
     
     #print
     #print _keyword_index
-    import matplotlib.pyplot as plt
+    #import matplotlib.pyplot as plt
     #_nx.draw_networkx(_summary_graph, withLabels=True)
     #plt.show()
     keyword_list = ["2006", "p  cimiano", "aifb"]
@@ -1068,18 +1071,18 @@ if __name__ == "__main__":
 
     _make_augmented_graph(K)
     
-    print _GE.graph.adj
-    print "==========="
-    print "nodes"
-    for n in _GE.graph.nodes(data=True):
-        print n
-    print "==========="
-    print "edges"
-    for e in _GE.graph.edges(keys=True,data=True):
-        print e
-    print
-    print "################"
-    print
+    #print _GE.graph.adj
+    #print "==========="
+    #print "nodes"
+    #for n in _GE.graph.nodes(data=True):
+    #    print n
+    #print "==========="
+    #print "edges"
+    #for e in _GE.graph.edges(keys=True,data=True):
+    #    print e
+    #print
+    #print "################"
+    #print
     #_nx.draw_networkx(_GE.graph, withLabels=True)
     #plt.show()
 
