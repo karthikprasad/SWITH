@@ -622,8 +622,16 @@ def _make_augmented_graph(K):
             
             # else if element is A-edge        
             elif ele.type == "edge" and ele.sub_type == "a":
-                aug_graph.add_edge(ele.n1, ele.n2, key=key,
-                    cost=1, cursors=_coll.defaultdict(list))
+                # ele.n1 is a cnode and is already present in the _summary_graph
+                # and hence available in the augmented graph.
+                # check if ele.n2(vnode) is present in the augmented graph.
+                # if not,add vnode to graph..make its cost 0
+                # cost will be updated if the node is added again later
+                if ele.n2 not in aug_graph:
+                    aug_graph.add_node(ele.n2, cost=0.0, 
+                        cursors=_coll.defaultdict(list))
+                aug_graph.add_edge(ele.n1, ele.n2, key=ele.key,
+                    cost=1.0, cursors=_coll.defaultdict(list))
     _GE.graph = aug_graph
     return aug_graph
 
@@ -700,18 +708,23 @@ def _alg1(num, dmax, K):
             if c.parent is not None:
                 _remove_ge(c.parent.graph_element, neighbours)
             ##########################
-            #print "element:: " + n.key
-            #print "neigh:: " + str([ne.key for ne in neighbours])
+            #print "element:: " + str(n)
+            #print "neigh:: " + str([str(ne) for ne in neighbours])
             ##########################
             # if neighbours not empty
             if len(neighbours) > 0:
                 for neighbour in neighbours:
                     # take care of cyclic paths
+                    ##########################
+                    #print "neighbour"+str(neighbour)
+                    #print "ancestors:" + str(c.ancestors)
+                    ##########################
                     if str(neighbour) not in c.ancestors:
                         # add new cursor to LQ
                         _heapq.heappush(LQ, _Cursor(neighbour, c.keyword_element,
                             c.i, c, c.cost+neighbour.cost, c.distance+1))    
             ##########################
+            #print LQ
             #for c in LQ:
             #    print c
             #print "arg passed to alg2::"
@@ -1054,28 +1067,36 @@ def _alg2(n, m, LG, LQ, k, R):
             #print "\tLG"+str(LG)  # WORKS
             #print
             ##########################
-    
+    # DETOUR FROM THE PAPER FOR EFFICIENCY
+    # IF THE TOP-K SUBGRAPHS ARE THE SAME AS THE PREVIOUS ITERATION,
+    # THERE IS NO POINT OF COMPUTING COSTS AND ARRIVING AT THE SAME R AGAIN
+    prev_LG = LG
     LG = _choose_top_k_sub_graphs(LG,k)
-    ###########################
-    #print "\tLG after choose topk :"+str(LG)  # WORKS
-    #print "\tk :: "+str(k)
-    #print
-    ###########################
-    highest_cost = _k_ranked(LG,k)
-    # if the cursor list LQ is empty
-    if len(LQ) == 0:
-        lowest_cost = highest_cost + 1
-    else:
-        lowest_cost = _heapq.nsmallest(1,LQ)[0].cost
-    ###########################
-    #print "\thighest cost = " + str(highest_cost)
-    #print "\tlowest cost = " + str(lowest_cost)
-    #print
-    ###########################
-    if highest_cost < lowest_cost:
-        for G in LG:
-            #add query computed from subgraph
-            R.append(_map_to_query(G[0]))
+    if LG == prev_LG:
+        ###########################
+        #print "\tLG after choose topk :"+str(LG)  # WORKS
+        #print "\tk :: "+str(k)
+        #print
+        ###########################
+        highest_cost = _k_ranked(LG,k)
+        # if the cursor list LQ is empty
+        if len(LQ) == 0:
+            lowest_cost = highest_cost + 1
+        else:
+            lowest_cost = _heapq.nsmallest(1,LQ)[0].cost
+        ###########################
+        #print "\thighest cost = " + str(highest_cost)
+        #print "\tlowest cost = " + str(lowest_cost)
+        #print
+        ###########################
+        if highest_cost < lowest_cost:
+            for G in LG:
+                #add query computed from subgraph
+                computed_query = _map_to_query(G[0])
+                if computed_query not in R:
+                    R.append(computed_query)
+            # terminates after top-k is generated    
+            return R,LG
 
     return R,LG
 
@@ -1092,15 +1113,19 @@ _summary_graph = _attach_costs(_summary_graph)
 
 if __name__ == "__main__":
     
-    print
-    print _keyword_index
-    #import matplotlib.pyplot as plt
+    import matplotlib.pyplot as plt
+    #print
+    print _keyword_index.keys()
     #_nx.draw_networkx(_summary_graph, withLabels=True)
     #plt.show()
-    keyword_list = ["2006", "p  cimiano", "aifb"]
+    keyword_list = ["p  cimiano", "works at"]
     K = _get_keyword_elements(keyword_list)
     #print
     #print K
+    #for l in K:
+    #    for ele in l:
+    #        print ele
+
 
     _make_augmented_graph(K)
     
@@ -1119,7 +1144,7 @@ if __name__ == "__main__":
     #_nx.draw_networkx(_GE.graph, withLabels=True)
     #plt.show()
 
-    R=_alg1(1,15,K)
+    R=_alg1(3,15,K)
     print
     print
     print R
