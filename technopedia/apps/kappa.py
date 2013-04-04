@@ -902,12 +902,27 @@ def _initialize_const_var(subgraph):
 def _map_edge(e,node_dict):
     edge_query = ""
     if _GE.is_aedge(e):
-        edge_query += "type("+node_dict[e[0]]+","+e[0]+")" + " ^ " + \
-            e[2]+"("+node_dict[e[0]]+","+e[1]+")"
+        # e[0] is cnode label
+        # e[1] is vnode label
+        # e[2] is edge label
+        # aedge -> edge(var(n1), vnode label)
+        edge_query += e[2]+"("+node_dict[e[0]]+","+e[1]+")"
+        # handle class BNode
+        if e[0] != "BNode":
+            # type(var(n1), cnode label)
+            edge_query += " ^ " + "type("+node_dict[e[0]]+","+e[0]+")"
+
     elif _GE.is_redge(e):
-        edge_query += "type("+node_dict[e[0]]+","+e[0]+")" + " ^ " + \
-            "type("+node_dict[e[1]]+","+e[1]+")" + " ^ " + \
-            e[2]+"("+node_dict[e[0]]+","+node_dict[e[1]]+")"
+        # e[0] is cnode1 label
+        # e[1] is cnode2 label
+        # e[2] is edge label
+        # redge -> edge(var(n1), var(n2))
+        edge_query += e[2]+"("+node_dict[e[0]]+","+node_dict[e[1]]+")"
+        if e[0] != "BNode":
+            edge_query += " ^ " + "type("+node_dict[e[0]]+","+e[0]+")"
+        if e[1] != "BNode":
+            edge_query += " ^ " + "type("+node_dict[e[1]]+","+e[1]+")"
+    
     return edge_query
 
 
