@@ -497,7 +497,7 @@ def _get_node_cost(node, graph, total_number_of_nodes):
     """
     if node == "BNode" or node == "Thing":
         return 0
-    return 1 - len(_GE.entity_nodes(node))/(total_number_of_nodes +0.0)
+    return 1 - (len(_GE.entity_nodes(node))/(total_number_of_nodes +0.0))
 
 
 def _attach_edge_costs(graph):
@@ -541,7 +541,7 @@ def _get_edge_cost(edge, graph, total_number_of_edges):
     for neighbour_edge in adjacent_edges:
         if _GE.is_redge(neighbour_edge):
             redge_count += 1
-    return 1 - redge_count/(total_number_of_edges+0.0)
+    return 1 - (redge_count/(total_number_of_edges+0.0))
 
 
 def _get_subgraph_cost(graph):
@@ -553,7 +553,6 @@ def _get_subgraph_cost(graph):
         a cumilative score
 
     """
-
     cumilative_cost = 0.0
     for n in graph.nodes(data=True):
         cumilative_cost += n[1]['cost']
@@ -691,17 +690,19 @@ def _alg1(num, dmax, K):
         for k in Ki:
             _heapq.heappush(LQ, _Cursor(k,k,i,None,k.cost,0))
     ###################
-    #print "alg1: init"
-    #for c in LQ:
-    #    print c
+    if _trace:
+        print "alg1: init"
+        for c in LQ:
+            print c
     #################
     # while LQ not empty
     while len(LQ) > 0:
         c = _heapq.heappop(LQ)
         n = c.graph_element
         #################
-        #print "========"
-        #print n.key
+        if _trace:
+            print "========"
+            print "element:: " + str(n)
         #################
         if c.distance < dmax:
             n.add_cursor(c)
@@ -711,7 +712,6 @@ def _alg1(num, dmax, K):
             if c.parent is not None:
                 _remove_ge(c.parent.graph_element, neighbours)
             ##########################
-            #print "element:: " + str(n)
             #print "neigh:: " + str([str(ne) for ne in neighbours])
             ##########################
             # if neighbours not empty
@@ -727,19 +727,20 @@ def _alg1(num, dmax, K):
                         _heapq.heappush(LQ, _Cursor(neighbour, c.keyword_element,
                             c.i, c, c.cost+neighbour.cost, c.distance+1))    
             ##########################
-            #print LQ
-            #for c in LQ:
-            #    print c
-            #print "arg passed to alg2::"
-            #print (n.key,m,LG,LQ,num,R)
+            if _trace:
+                for c in LQ:
+                    print c
+                print "arg passed to alg2::"
+                print (n.key,m,LG,LQ,num,R)
             ##########################
             R,LG = _alg2(n,m,LG,LQ,num,R)
             ##########################
-            #print "o/p from alg2:"
-            #print "\tR :: "+str(R)
-            #print "\tLG :: "+str(LG)
-            #print "==================="
-            #print
+            if _trace:
+                print "o/p from alg2:"
+                print "\tR :: "+str(R)
+                print "\tLG :: "+str(LG)
+                print "==================="
+                print
             ##########################
     return R
 
@@ -771,13 +772,15 @@ def _remove_ge(ge, ge_list):
 
 def _alg2(n, m, LG, LQ, k, R):
     ##########################
-    #print
-    #print "in alg2:"
+    if _trace:
+        print
+        print "in alg2:"
     ##########################
     if _is_connected(n,m):
         ##########################
-        #print "\tconntected"+str(n)
-        #print
+        if _trace:
+            print "\tconntected"+str(n)
+            print
         ##########################
         #process new subgraphs in n
         C =_cursor_combinations(n)
@@ -785,31 +788,20 @@ def _alg2(n, m, LG, LQ, k, R):
             paths = _build_m_paths(c)
             subgraph = _merge_paths_to_graph(paths)
             ##########################
-            #import matplotlib.pyplot as plt
-            #_nx.draw_networkx(subgraph, withLabels=True)
-            #plt.show()
+            if _trace:
+                import matplotlib.pyplot as plt
+                _nx.draw_networkx(subgraph, withLabels=True)
+                plt.show()
             ##########################
             cost_augmented_tuple = _update_cost_of_subgraph(subgraph)
             ##########################
-            #print "\tcost aug"+str(cost_augmented_tuple)
-            #print
+            if _trace:
+                print "\tcost aug"+str(cost_augmented_tuple)
+                print
             ##########################
             LG.append(cost_augmented_tuple)
-            ##########################
-            #print "\tLG"+str(LG)  # WORKS
-            #print
-            ##########################
-    # DETOUR FROM THE PAPER FOR EFFICIENCY
-    # IF THE TOP-K SUBGRAPHS ARE THE SAME AS THE PREVIOUS ITERATION,
-    # THERE IS NO POINT OF COMPUTING COSTS AND ARRIVING AT THE SAME R AGAIN
-    #prev_LG = LG
+
     LG = _choose_top_k_sub_graphs(LG,k)
-    #if LG == prev_LG:
-    ###########################
-    #print "\tLG after choose topk :"+str(LG)  # WORKS
-    #print "\tk :: "+str(k)
-    #print
-    ###########################
     highest_cost = _k_ranked(LG,k)
     # if the cursor list LQ is empty
     if len(LQ) == 0:
@@ -817,9 +809,10 @@ def _alg2(n, m, LG, LQ, k, R):
     else:
         lowest_cost = _heapq.nsmallest(1,LQ)[0].cost
     ###########################
-    #print "\thighest cost = " + str(highest_cost)
-    #print "\tlowest cost = " + str(lowest_cost)
-    #print
+    if _trace:
+        print "\thighest cost = " + str(highest_cost)
+        print "\tlowest cost = " + str(lowest_cost)
+        print
     ###########################
     if highest_cost < lowest_cost:
         for G in LG:
@@ -1141,7 +1134,7 @@ _keyword_index = _get_keyword_index()
 _summary_graph = _get_summary_graph()
 _summary_graph = _attach_costs(_summary_graph)
 
-
+_trace = True
 if __name__ == "__main__":
     
     import matplotlib.pyplot as plt
@@ -1163,7 +1156,6 @@ if __name__ == "__main__":
     #keyword_list = ["software", "windows"]
     #keyword_list = ["java.math"]
 
-    
     K = _get_keyword_elements(keyword_list)
     #print
     #print K
@@ -1173,7 +1165,6 @@ if __name__ == "__main__":
 
 
     _make_augmented_graph(K)
-    
     #print "==========="
     #print "nodes"
     #for n in _GE.graph.nodes(data=True):
@@ -1185,15 +1176,14 @@ if __name__ == "__main__":
     #print
     #print "################"
     #print
-    
     _nx.draw_networkx(_GE.graph, withLabels=True)
     plt.show()
-    R=_alg1(3,15,K)
 
+
+    R=_alg1(3,15,K)
     print
     print R
     print
-    
     i = 1
     for q in R:
         print
@@ -1202,8 +1192,8 @@ if __name__ == "__main__":
         print "======"
         i+=1
         print _get_sparql_query(q)
+    
     sp=_get_sparql_query(R[0])
-
     print
     print "result"
     print "========"
