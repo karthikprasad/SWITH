@@ -759,8 +759,6 @@ def _remove_ge(ge, ge_list):
             break
 
 
-### alg 2 functions ###
-
 #############################################################################################################################
 #algo2
 ##############################################################################################################################  
@@ -961,7 +959,7 @@ def _initialize_const_var(subgraph):
     i = 0
     node_dict = _coll.defaultdict(str)
     for node in subgraph.nodes():
-        variable = "var" + str(i)
+        variable = "?var" + str(i)
         i = i+1
         constant = node
         node_dict[constant] = variable
@@ -990,11 +988,11 @@ def _map_edge(e,node_dict):
         # e[1] is vnode label
         # e[2] is edge label
         # aedge -> edge(var(n1), vnode label)
-        edge_query.append(e[2]+"("+node_dict[e[0]]+","+e[1]+")")
+        edge_query.append("{"+node_dict[e[0]]+" <"+e[2]+"> \""+e[1]+"\"}")
         # handle class BNode
-        if e[0] != "BNode":
+        if e[0] != "BNode" or e[0] != "Thing":
             # type(var(n1), cnode label)
-            edge_query.append("type("+node_dict[e[0]]+","+e[0]+")")
+            edge_query.append("{"+node_dict[e[0]]+" <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <"+e[0]+">}")
 
     elif e in _GE.redges:
         ##########################
@@ -1004,11 +1002,11 @@ def _map_edge(e,node_dict):
         # e[1] is cnode2 label
         # e[2] is edge label
         # redge -> edge(var(n1), var(n2))
-        edge_query.append(e[2]+"("+node_dict[e[0]]+","+node_dict[e[1]]+")")
-        if e[0] != "BNode":
-            edge_query.append("type("+node_dict[e[0]]+","+e[0]+")")
-        if e[1] != "BNode":
-            edge_query.append("type("+node_dict[e[1]]+","+e[1]+")")
+        edge_query.append("{"+node_dict[e[0]]+" <"+e[2]+"> "+node_dict[e[1]]+"}")
+        if e[0] != "BNode" or e[0] != "Thing":
+            edge_query.append("{"+node_dict[e[0]]+" <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <"+e[0]+">}")
+        if e[1] != "BNode" or e[1] != "Thing":
+            edge_query.append("{"+node_dict[e[1]]+" <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <"+e[1]+">}")
     
     return edge_query
 
@@ -1031,7 +1029,12 @@ def _map_to_query(G):
                                           # has a variable associated with it
     for edge in G.edges(keys=True):
         conj_query += _map_edge(edge,node_dict)
-    return list(set(conj_query))
+    # remove duplicate clauses
+    conj_query = list(set(conj_query))
+    # concatenate the clauses with a .
+    conj_query = ".".join(conj_query)
+    # return query
+    return conj_query
         
         
 
@@ -1113,7 +1116,7 @@ if __name__ == "__main__":
     
     import matplotlib.pyplot as plt
     print
-    print _keyword_index.keys()
+    #print _keyword_index.keys()
     #for k,v in _keyword_index.iteritems():
     #    print k + " ::"
     #    print "========="
@@ -1126,8 +1129,8 @@ if __name__ == "__main__":
     plt.show()
 
 
-    #keyword_list = ["driver","package"]
-    keyword_list = ["software", "windows"]
+    keyword_list = ["driver","package"]
+    #keyword_list = ["software", "windows"]
     #keyword_list = ["java.math"]
 
     
@@ -1157,6 +1160,8 @@ if __name__ == "__main__":
     plt.show()
     R=_alg1(3,15,K)
 
+    print R
+    '''
     i = 1
     for q in R:
         if len(q) != 0:
@@ -1167,6 +1172,7 @@ if __name__ == "__main__":
             i+=1
             for clause in q:
                 print clause
+    '''
     print
     print
 

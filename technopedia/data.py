@@ -13,7 +13,7 @@ import simplejson as _simplejson
 
 
 # database name and connection string
-_NAME = "looptest"
+_NAME = "javadocs"
 _CONN_STR = "host=localhost,user=root,password=root"
 
 # global variable (module-level)
