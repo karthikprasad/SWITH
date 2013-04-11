@@ -66,12 +66,12 @@ else:
             SPARQL result as rdflib_sparql.processor.SPARQLResult object.
 
         """
-        try:
-            sparql_result = _graph.query(query_string, initNs=initNs, 
+        #try:
+        sparql_result = _graph.query(query_string, initNs=initNs, 
                                                 initBindings=initBindings)
-        except:
-            # handle No query or wrong query syntax errors
-            raise SparqlError("query execution failed")
+        #except:
+        #    # handle No query or wrong query syntax errors
+        #    raise SparqlError("query execution failed")
 
         return sparql_result
 
@@ -639,6 +639,7 @@ class SparqlError(Exception):
 
 if __name__ == "__main__":
 
+    '''
     print
     print
     print "SUBJECTS"
@@ -673,98 +674,31 @@ if __name__ == "__main__":
     #t = triples(predicate="http://www.w3.org/2000/01/rdf-schema#member")["response"]
     #for row in t:
     #    print row
-    
-    '''
-    #print subjects()
-    print
-    print
-    s = "Android"
-    print subjects(object=s)
-    print
-    print
-    s = '"Android"@en'
-    print subjects(object=s)
-    print
-    print
-    
-    s = '_:N54080b9b88ce4d52be67be8d0bfbb008'
-    print subjects(object=s)
-    print
-    print
-    s = '"\u0E0B\u0E34\u0E01\u0E27\u0E34\u0E19"@th'
-    print subjects(object=s)
-    print
-    print
-    s = '"\\u0E0B\\u0E34\\u0E01\\u0E27\\u0E34\\u0E19"@th'
-    print subjects(object=s)
-    print
-    print
-    s = "Bob"
-    print subjects(object=s)
-    print
-    print
     '''
 
-    '''
-    #print predicates()
-    print
-    print
-    s = "Android"
-    print predicates(object=s)
-    print
-    print
-    s = '"Alice"@en'
-    print predicates(object=s)
-    print
-    print
-    s = '_:N54080b9b88ce4d52be67be8d0bfbb008'
-    print predicates(object=s)
-    print
-    print
-    s = '"\u0E0B\u0E34\u0E01\u0E27\u0E34\u0E19"@th'
-    print predicates(object=s)
-    print
-    print
-    s = '"\\u0E0B\\u0E34\\u0E01\\u0E27\\u0E34\\u0E19"@th'
-    print predicates(object=s)
-    print
-    print
-    s = "Bob"
-    print predicates(object=s)
-    print
-    print
-    '''
+    print "SPARQL QYERY"
+    print "============="
+    # doesnt work
+    q='''select distinct ?var0 ?var1 where {graph ?g {
+        {?var0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/package>}.
+        {?var0 <http://www.w3.org/2000/01/rdf-schema#member> ?var1}}}'''
 
-    '''
-    #print objects()
-    print literals(subject="http://rdf.freebase.com/ns/m.02wxtgw")
-    print objects(predicate="http://xmlns.com/foaf/0.1/name")
-    '''
+    # works
+    q='''select distinct ?var0 ?var1 where {graph ?g {
+        {?var1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/class>}.
+        {?var0 <http://www.w3.org/2000/01/rdf-schema#member> ?var1}}}'''
 
-    '''
-    print contexts(object="Android")
-    print contexts(subject="http://example.org/alice/foaf.rdf#me")
-    print contexts(predicate="http://xmlns.com/foaf/0.1/name")
-    print contexts(object="Bob")
-    print contexts(object="Alic")
-    print contexts(object='"Alice"@fr')
-    '''
+    # doesnt work
+    q='''select distinct ?var0 ?var1 where {graph ?g {
+        {?var1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/class>}.
+        {?var1 <http://www.w3.org/2000/01/rdf-schema#label> "Driver"}.
+        {?var0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/package>}.
+        {?var0 <http://www.w3.org/2000/01/rdf-schema#member> ?var1}}}'''
 
-    '''
-    t = triples(object="Android")["response"]
-    t = triples(subject="http://rdf.freebase.com/ns/m.02wxtgw")["response"]
-    for row in t:
-        print row
-    '''
-    '''
-    import time
-    print "hello"
-    t = time.time()
-    l = triples()["response"]
-    print time.time()-t
-    print "hi"
-    t = time.time()
-    print len(l)
-    print time.time()-t
-    '''
-    
+    # works
+    q='''select distinct ?var0 ?var1 where {graph ?g {
+        {?var1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/class>}.
+        {?var1 <http://www.w3.org/2000/01/rdf-schema#label> "Driver"}.
+        {?var0 <http://www.w3.org/2000/01/rdf-schema#member> ?var1}}}'''
+
+    print query(q)

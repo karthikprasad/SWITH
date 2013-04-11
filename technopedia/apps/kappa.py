@@ -1112,6 +1112,26 @@ def _map_edge(e,node_dict):
     return edge_query
 
 
+def _get_sparql_query(conj_query):
+    """
+    function which returns a sparql query given a conjuunctive query
+
+    @param
+        conj_query :: conjunctive query as string
+    @return
+        sparql_query :: sparql query as string
+
+    """
+    # pattern of the variables in the query
+    pat = _re.compile('\?var[0-9]+')
+    var_list = list(set(pat.findall(conj_query)))
+
+    sparql_query = "select distinct "+" ".join(var_list)+ \
+        " where {graph ?g {"+conj_query+"}}"
+
+    return sparql_query
+
+
 #############################################################################################################################
 #############################################################################################################################
 
@@ -1170,19 +1190,25 @@ if __name__ == "__main__":
     plt.show()
     R=_alg1(3,15,K)
 
+    print
     print R
-    '''
+    print
+    
     i = 1
     for q in R:
-        if len(q) != 0:
-            print
-            print
-            print "query "+str(i)
-            print "======"
-            i+=1
-            for clause in q:
-                print clause
-    '''
+        print
+        print
+        print "query "+str(i)
+        print "======"
+        i+=1
+        print _get_sparql_query(q)
+    sp=_get_sparql_query(R[0])
+
+    print
+    print "result"
+    print "========"
+    print data.query(sp)
+    
     print
     print
 
