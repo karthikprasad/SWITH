@@ -674,6 +674,11 @@ class _Cursor:
         return ancestor_list
 
 
+#############################################################################################################################
+#############################################################################################################################
+
+######## ALGO 1 ########
+
 def _alg1(num, dmax, K):
     m = len(K)
     LQ = []
@@ -760,8 +765,73 @@ def _remove_ge(ge, ge_list):
 
 
 #############################################################################################################################
-#algo2
-##############################################################################################################################  
+#############################################################################################################################
+
+######## ALGO 2 ########  
+
+def _alg2(n, m, LG, LQ, k, R):
+    ##########################
+    #print
+    #print "in alg2:"
+    ##########################
+    if _is_connected(n,m):
+        ##########################
+        #print "\tconntected"+str(n)
+        #print
+        ##########################
+        #process new subgraphs in n
+        C =_cursor_combinations(n)
+        for c in C:
+            paths = _build_m_paths(c)
+            subgraph = _merge_paths_to_graph(paths)
+            ##########################
+            #import matplotlib.pyplot as plt
+            #_nx.draw_networkx(subgraph, withLabels=True)
+            #plt.show()
+            ##########################
+            cost_augmented_tuple = _update_cost_of_subgraph(subgraph)
+            ##########################
+            #print "\tcost aug"+str(cost_augmented_tuple)
+            #print
+            ##########################
+            LG.append(cost_augmented_tuple)
+            ##########################
+            #print "\tLG"+str(LG)  # WORKS
+            #print
+            ##########################
+    # DETOUR FROM THE PAPER FOR EFFICIENCY
+    # IF THE TOP-K SUBGRAPHS ARE THE SAME AS THE PREVIOUS ITERATION,
+    # THERE IS NO POINT OF COMPUTING COSTS AND ARRIVING AT THE SAME R AGAIN
+    #prev_LG = LG
+    LG = _choose_top_k_sub_graphs(LG,k)
+    #if LG == prev_LG:
+    ###########################
+    #print "\tLG after choose topk :"+str(LG)  # WORKS
+    #print "\tk :: "+str(k)
+    #print
+    ###########################
+    highest_cost = _k_ranked(LG,k)
+    # if the cursor list LQ is empty
+    if len(LQ) == 0:
+        lowest_cost = highest_cost + 1
+    else:
+        lowest_cost = _heapq.nsmallest(1,LQ)[0].cost
+    ###########################
+    #print "\thighest cost = " + str(highest_cost)
+    #print "\tlowest cost = " + str(lowest_cost)
+    #print
+    ###########################
+    if highest_cost < lowest_cost:
+        for G in LG:
+            #add query computed from subgraph
+            computed_query = _map_to_query(G[0])
+            if computed_query not in R:
+                R.append(computed_query)
+        # terminates after top-k is generated    
+        return R,LG
+
+    return R,LG
+
 
 def _is_connected(n,m):
     """
@@ -955,6 +1025,37 @@ def _k_ranked(LG,k):
         return LG[len(LG)-1][1]
 
 
+#############################################################################################################################
+#############################################################################################################################
+
+######## QUERY MAPPING ######## 
+
+def _map_to_query(G):
+    """
+    function which maps a graph to a conjunctive query.
+    @param
+        G :: networkx graph
+    @return:
+        conj_query :: a list of conj query predicates
+    """
+    ##########################
+    #import matplotlib.pyplot as plt
+    #_nx.draw_networkx(G, withLabels=True)
+    #plt.show()
+    ##########################
+    conj_query = []
+    node_dict = _initialize_const_var(G)  # node_dict is a dict where each node
+                                          # has a variable associated with it
+    for edge in G.edges(keys=True):
+        conj_query += _map_edge(edge,node_dict)
+    # remove duplicate clauses
+    conj_query = list(set(conj_query))
+    # concatenate the clauses with a .
+    conj_query = ".".join(conj_query)
+    # return query
+    return conj_query
+
+
 def _initialize_const_var(subgraph):
     i = 0
     node_dict = _coll.defaultdict(str)
@@ -1009,97 +1110,6 @@ def _map_edge(e,node_dict):
             edge_query.append("{"+node_dict[e[1]]+" <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <"+e[1]+">}")
     
     return edge_query
-
-
-def _map_to_query(G):
-    """
-    function which maps a graph to a conjunctive query.
-    @param
-        G :: networkx graph
-    @return:
-        conj_query :: a list of conj query predicates
-    """
-    ##########################
-    #import matplotlib.pyplot as plt
-    #_nx.draw_networkx(G, withLabels=True)
-    #plt.show()
-    ##########################
-    conj_query = []
-    node_dict = _initialize_const_var(G)  # node_dict is a dict where each node
-                                          # has a variable associated with it
-    for edge in G.edges(keys=True):
-        conj_query += _map_edge(edge,node_dict)
-    # remove duplicate clauses
-    conj_query = list(set(conj_query))
-    # concatenate the clauses with a .
-    conj_query = ".".join(conj_query)
-    # return query
-    return conj_query
-        
-        
-
-def _alg2(n, m, LG, LQ, k, R):
-    ##########################
-    #print
-    #print "in alg2:"
-    ##########################
-    if _is_connected(n,m):
-        ##########################
-        #print "\tconntected"+str(n)
-        #print
-        ##########################
-        #process new subgraphs in n
-        C =_cursor_combinations(n)
-        for c in C:
-            paths = _build_m_paths(c)
-            subgraph = _merge_paths_to_graph(paths)
-            ##########################
-            #import matplotlib.pyplot as plt
-            #_nx.draw_networkx(subgraph, withLabels=True)
-            #plt.show()
-            ##########################
-            cost_augmented_tuple = _update_cost_of_subgraph(subgraph)
-            ##########################
-            #print "\tcost aug"+str(cost_augmented_tuple)
-            #print
-            ##########################
-            LG.append(cost_augmented_tuple)
-            ##########################
-            #print "\tLG"+str(LG)  # WORKS
-            #print
-            ##########################
-    # DETOUR FROM THE PAPER FOR EFFICIENCY
-    # IF THE TOP-K SUBGRAPHS ARE THE SAME AS THE PREVIOUS ITERATION,
-    # THERE IS NO POINT OF COMPUTING COSTS AND ARRIVING AT THE SAME R AGAIN
-    #prev_LG = LG
-    LG = _choose_top_k_sub_graphs(LG,k)
-    #if LG == prev_LG:
-    ###########################
-    #print "\tLG after choose topk :"+str(LG)  # WORKS
-    #print "\tk :: "+str(k)
-    #print
-    ###########################
-    highest_cost = _k_ranked(LG,k)
-    # if the cursor list LQ is empty
-    if len(LQ) == 0:
-        lowest_cost = highest_cost + 1
-    else:
-        lowest_cost = _heapq.nsmallest(1,LQ)[0].cost
-    ###########################
-    #print "\thighest cost = " + str(highest_cost)
-    #print "\tlowest cost = " + str(lowest_cost)
-    #print
-    ###########################
-    if highest_cost < lowest_cost:
-        for G in LG:
-            #add query computed from subgraph
-            computed_query = _map_to_query(G[0])
-            if computed_query not in R:
-                R.append(computed_query)
-        # terminates after top-k is generated    
-        return R,LG
-
-    return R,LG
 
 
 #############################################################################################################################
