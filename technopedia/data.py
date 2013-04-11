@@ -13,7 +13,7 @@ import simplejson as _simplejson
 
 
 # database name and connection string
-_NAME = "topk"
+_NAME = "looptest"
 _CONN_STR = "host=localhost,user=root,password=root"
 
 # global variable (module-level)
@@ -638,6 +638,41 @@ class SparqlError(Exception):
 
 
 if __name__ == "__main__":
+
+    print
+    print
+    print "SUBJECTS"
+    print "========="
+    print subjects(object="Driver")
+    print
+    print
+    print "PREDICATES"
+    print "========="
+    print predicates(object="Driver")
+    print
+    print
+    print "OBJECTS"
+    print "========="
+    objs = objects(subject="http://docs.oracle.com/javase/7/docs/api/java/applet/AppletContext.html")["response"]
+    for obj in objs:
+        print obj
+    print
+    print
+    print "LITERALS"
+    print "========="
+    print literals(subject="http://docs.oracle.com/javase/7/docs/api/java/applet/AppletContext.html")
+    print
+    print
+    print "CONTEXTS"
+    print "========="
+    print contexts(subject="http://docs.oracle.com/javase/7/docs/api/java/applet/AppletContext.html")
+    print
+    print
+    #print "TRIPLES"
+    #print "========="
+    #t = triples(predicate="http://www.w3.org/2000/01/rdf-schema#member")["response"]
+    #for row in t:
+    #    print row
     
     '''
     #print subjects()

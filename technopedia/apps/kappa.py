@@ -346,7 +346,7 @@ def _extract_keywords_from_literal(literal):
         if len(rhs) == 2:
             literal = literal[:literal.rfind("@")]
             literal = literal.replace("\"", "")
-    keyword = _clean_camelCase(literal)
+    keyword = literal.lower()
     return [keyword]
 
 
@@ -428,9 +428,7 @@ def _clean_camelCase(keyword):
             keyword = sub_keyword
 
     # remove .,-,_ from the keyword
-    keyword = keyword.replace(".", "")
-    keyword = keyword.replace("-", "")
-    keyword = keyword.replace("_", "")
+    keyword = keyword.replace("-", " ")
     return keyword.strip()
 
 
@@ -1070,33 +1068,33 @@ def _alg2(n, m, LG, LQ, k, R):
     # DETOUR FROM THE PAPER FOR EFFICIENCY
     # IF THE TOP-K SUBGRAPHS ARE THE SAME AS THE PREVIOUS ITERATION,
     # THERE IS NO POINT OF COMPUTING COSTS AND ARRIVING AT THE SAME R AGAIN
-    prev_LG = LG
+    #prev_LG = LG
     LG = _choose_top_k_sub_graphs(LG,k)
-    if LG == prev_LG:
-        ###########################
-        #print "\tLG after choose topk :"+str(LG)  # WORKS
-        #print "\tk :: "+str(k)
-        #print
-        ###########################
-        highest_cost = _k_ranked(LG,k)
-        # if the cursor list LQ is empty
-        if len(LQ) == 0:
-            lowest_cost = highest_cost + 1
-        else:
-            lowest_cost = _heapq.nsmallest(1,LQ)[0].cost
-        ###########################
-        #print "\thighest cost = " + str(highest_cost)
-        #print "\tlowest cost = " + str(lowest_cost)
-        #print
-        ###########################
-        if highest_cost < lowest_cost:
-            for G in LG:
-                #add query computed from subgraph
-                computed_query = _map_to_query(G[0])
-                if computed_query not in R:
-                    R.append(computed_query)
-            # terminates after top-k is generated    
-            return R,LG
+    #if LG == prev_LG:
+    ###########################
+    #print "\tLG after choose topk :"+str(LG)  # WORKS
+    #print "\tk :: "+str(k)
+    #print
+    ###########################
+    highest_cost = _k_ranked(LG,k)
+    # if the cursor list LQ is empty
+    if len(LQ) == 0:
+        lowest_cost = highest_cost + 1
+    else:
+        lowest_cost = _heapq.nsmallest(1,LQ)[0].cost
+    ###########################
+    #print "\thighest cost = " + str(highest_cost)
+    #print "\tlowest cost = " + str(lowest_cost)
+    #print
+    ###########################
+    if highest_cost < lowest_cost:
+        for G in LG:
+            #add query computed from subgraph
+            computed_query = _map_to_query(G[0])
+            if computed_query not in R:
+                R.append(computed_query)
+        # terminates after top-k is generated    
+        return R,LG
 
     return R,LG
 
@@ -1114,11 +1112,25 @@ _summary_graph = _attach_costs(_summary_graph)
 if __name__ == "__main__":
     
     import matplotlib.pyplot as plt
-    #print
+    print
     print _keyword_index.keys()
-    #_nx.draw_networkx(_summary_graph, withLabels=True)
-    #plt.show()
-    keyword_list = ["p  cimiano", "works at"]
+    #for k,v in _keyword_index.iteritems():
+    #    print k + " ::"
+    #    print "========="
+    #    for ele in v:
+    #        print "\t"+str(ele)
+    #    print
+    #    print
+
+    _nx.draw_networkx(_summary_graph, withLabels=True)
+    plt.show()
+
+
+    #keyword_list = ["driver","package"]
+    keyword_list = ["software", "windows"]
+    #keyword_list = ["java.math"]
+
+    
     K = _get_keyword_elements(keyword_list)
     #print
     #print K
@@ -1129,7 +1141,6 @@ if __name__ == "__main__":
 
     _make_augmented_graph(K)
     
-    #print _GE.graph.adj
     #print "==========="
     #print "nodes"
     #for n in _GE.graph.nodes(data=True):
@@ -1141,11 +1152,21 @@ if __name__ == "__main__":
     #print
     #print "################"
     #print
-    #_nx.draw_networkx(_GE.graph, withLabels=True)
-    #plt.show()
-
+    
+    _nx.draw_networkx(_GE.graph, withLabels=True)
+    plt.show()
     R=_alg1(3,15,K)
+
+    i = 1
+    for q in R:
+        if len(q) != 0:
+            print
+            print
+            print "query "+str(i)
+            print "======"
+            i+=1
+            for clause in q:
+                print clause
     print
     print
-    print R
 
