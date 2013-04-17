@@ -3,6 +3,7 @@ import collections as _coll
 import itertools as _it
 import re as _re
 import heapq as _heapq
+import simplejson as _simplejson
 
 from technopedia import data
 
@@ -567,6 +568,22 @@ def _get_subgraph_cost(graph):
 
 ######## SECTION 6 - QUERY INTERPRETATION ########
 
+def _preprocess_query(query):
+    """
+    function which processes the given english keyword query and returns
+    a list of keywords that will then be used to search in the keyword_index
+
+    @param
+        query :: 
+    @return
+        keyword list
+
+    to be implemented by aparna
+
+    """
+    return query.strip().split(" ")
+
+
 def _get_keyword_elements(keyword_list):
     """
     function returns a list of list of keyword elements given
@@ -742,7 +759,7 @@ def _alg1(num, dmax, K):
                 print "==================="
                 print
             ##########################
-    return R
+    return R,LG
 
 
 def _remove_ge(ge, ge_list):
@@ -1134,9 +1151,60 @@ _keyword_index = _get_keyword_index()
 _summary_graph = _get_summary_graph()
 _summary_graph = _attach_costs(_summary_graph)
 
-_trace = True
+
+#############################################################################################################################
+#############################################################################################################################
+
+######## PUBLIC FUNCTIONS ######## 
+
+def topk(query,num):
+    """
+    function which accepts a keyword query from the user, processes it and 
+    runs the topk algorithms on it.
+
+    @param
+        query :: string query from the user
+        num :: number of interpreattions required (the k in topk)
+
+    @return
+        sparql_R :: list of sparql queries
+        graphs_LG :: list of nx graphs corresponding to each query in sparql_R
+
+    """
+    keyword_list = _preprocess_query(query)  # to be implemented by aparna
+    K = _get_keyword_elements(keyword_list)
+    _make_augmented_graph(K)
+    R, LG = _alg1(num,16,K)
+    sparql_R = [_get_sparql_query(q) for q in R]
+    graphs_LG = [g[0] for g in LG]
+
+    return sparql_R, graphs_LG
+
+
+def sparql_to_facts(sparql_query):
+    '''
+    to be implemented by apoorva
+    @param
+        sparql_query :: a sparql query
+
+    @return
+        facts
+    '''
+    sparql_result = data.query(sparql_query, format="json")
+    return _simplejson.dumps(sparql_result)
+
+
+
+
+
+
+#############################################################################################################################
+#############################################################################################################################
+
+
+_trace = False
 if __name__ == "__main__":
-    
+
     import matplotlib.pyplot as plt
     print
     #print _keyword_index.keys()
@@ -1151,8 +1219,8 @@ if __name__ == "__main__":
     _nx.draw_networkx(_summary_graph, withLabels=True)
     plt.show()
 
-
-    keyword_list = ["driver","package"]
+    keyword_list = _preprocess_query("driver package")
+    #keyword_list = ["driver","package"]
     #keyword_list = ["software", "windows"]
     #keyword_list = ["java.math"]
 
@@ -1201,4 +1269,4 @@ if __name__ == "__main__":
     
     print
     print
-
+    

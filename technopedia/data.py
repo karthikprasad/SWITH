@@ -689,16 +689,17 @@ if __name__ == "__main__":
         {?var0 <http://www.w3.org/2000/01/rdf-schema#member> ?var1}}}'''
 
     # doesnt work
-    q='''select distinct ?var0 ?var1 where {graph ?g {
+    q1='''select distinct ?var0 ?var1 where {graph ?g {
         {?var1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/class>}.
         {?var1 <http://www.w3.org/2000/01/rdf-schema#label> "Driver"}.
         {?var0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/package>}.
         {?var0 <http://www.w3.org/2000/01/rdf-schema#member> ?var1}}}'''
 
     # works
-    q='''select distinct ?var0 ?var1 where {graph ?g {
+    q2='''select distinct ?var0 ?var1 where {graph ?g {
         {?var1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/class>}.
         {?var1 <http://www.w3.org/2000/01/rdf-schema#label> "Driver"}.
         {?var0 <http://www.w3.org/2000/01/rdf-schema#member> ?var1}}}'''
 
-    print query(q)
+    print query(q1)
+    print query(q2)
