@@ -1191,10 +1191,7 @@ def sparql_to_facts(sparql_query):
         facts
     '''
     sparql_result = data.query(sparql_query, format="json")
-    return _simplejson.dumps(sparql_result)
-
-
-
+    return sparql_result
 
 
 
