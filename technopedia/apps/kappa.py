@@ -4,6 +4,11 @@ import itertools as _it
 import re as _re
 import heapq as _heapq
 import simplejson as _simplejson
+import difflib as _difflib
+import nltk.corpus as _nltk_corpus
+import nltk.stem.lancaster as _stemmer
+import fyzz as _fyzz
+import urlparse as _urlparse
 
 from technopedia import data
 
@@ -567,22 +572,13 @@ def _get_subgraph_cost(graph):
 
 
 ######## SECTION 6 - QUERY INTERPRETATION ########
-
-def _preprocess_query(query):
+'''
+def _query_to_keyword(query):
     """
-    function which processes the given english keyword query and returns
-    a list of keywords that will then be used to search in the keyword_index
-
-    @param
-        query :: 
-    @return
-        keyword list
-
-    to be implemented by aparna
-
+    to be implemented
     """
-    return query.strip().split(" ")
-
+    return query.split(" ")
+'''
 
 def _get_keyword_elements(keyword_list):
     """
@@ -1061,7 +1057,7 @@ def _map_to_query(G):
     # remove duplicate clauses
     conj_query = list(set(conj_query))
     # concatenate the clauses with a .
-    conj_query = ".".join(conj_query)
+    conj_query = " . ".join(conj_query)
     # return query
     return conj_query
 
@@ -1099,11 +1095,11 @@ def _map_edge(e,node_dict):
         # e[1] is vnode label
         # e[2] is edge label
         # aedge -> edge(var(n1), vnode label)
-        edge_query.append("{"+node_dict[e[0]]+" <"+e[2]+"> \""+e[1]+"\"}")
+        edge_query.append(""+node_dict[e[0]]+" <"+e[2]+"> \""+e[1]+"\"")
         # handle class BNode
         if e[0] != "BNode" or e[0] != "Thing":
             # type(var(n1), cnode label)
-            edge_query.append("{"+node_dict[e[0]]+" <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <"+e[0]+">}")
+            edge_query.append(""+node_dict[e[0]]+" <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <"+e[0]+">")
 
     elif e in _GE.redges:
         ##########################
@@ -1113,11 +1109,11 @@ def _map_edge(e,node_dict):
         # e[1] is cnode2 label
         # e[2] is edge label
         # redge -> edge(var(n1), var(n2))
-        edge_query.append("{"+node_dict[e[0]]+" <"+e[2]+"> "+node_dict[e[1]]+"}")
+        edge_query.append(""+node_dict[e[0]]+" <"+e[2]+"> "+node_dict[e[1]]+"")
         if e[0] != "BNode" or e[0] != "Thing":
-            edge_query.append("{"+node_dict[e[0]]+" <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <"+e[0]+">}")
+            edge_query.append(""+node_dict[e[0]]+" <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <"+e[0]+">")
         if e[1] != "BNode" or e[1] != "Thing":
-            edge_query.append("{"+node_dict[e[1]]+" <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <"+e[1]+">}")
+            edge_query.append(""+node_dict[e[1]]+" <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <"+e[1]+">")
     
     return edge_query
 
@@ -1136,10 +1132,107 @@ def _get_sparql_query(conj_query):
     pat = _re.compile('\?var[0-9]+')
     var_list = list(set(pat.findall(conj_query)))
 
-    sparql_query = "select distinct "+" ".join(var_list)+ \
-        " where {graph ?g {"+conj_query+"}}"
+    sparql_query = "SELECT DISTINCT "+" ".join(var_list)+ \
+        " WHERE {GRAPH ?g {"+conj_query+"}}"
 
     return sparql_query
+
+
+#############################################################################################################################
+#############################################################################################################################
+
+######## SPARQL TO ENGLISH CONVERSION HELPER FUNCTIONS ########
+def _parse_query(query_string):
+    """
+    function which cleans and parses the sparql query
+    @param:
+            query_string:: The oroginal query in string fromat
+    @return:
+            lol_sparql_query::A list of list that contains the where part query split on "."
+    """
+    query_string = query_string.replace("GRAPH ?g {","")
+    query_string = query_string[:len(query_string)-1]
+    ast=_fyzz.parse(query_string)
+    lol_sparql_query=ast.where
+    return lol_sparql_query
+
+
+def _filter_predicates(lol_sparql_query):
+    """
+    function that fetches the relevant triples from the SPARQL query
+    @param:
+            lol_sparql_query:: A list of list which each contains apart of sparql query
+    @return::
+            lol_filterted::A list of list of filtered queries
+    """
+    lol_filtered=[]       
+    for triple in lol_sparql_query:
+        predicate=triple[1].replace("<","")
+        predicate=predicate.replace(">","")
+
+        ourl=_urlparse.urlparse(predicate) # handy to extract the various parts of a uri like domain, path, fragment etc
+        #print ourl.fragment
+        if ourl.fragment!="type" and ourl.fragment!="label":
+            lol_filtered.append(triple)            
+    return lol_filtered
+
+
+def _extract_facts(var_dict,bindingsList,lol_filtered,j):
+    """
+    function to extract facts from a given list of bindings, variables and required predicates
+    @param:
+        var_dict:: a dictionary of variables in the query
+        bindingsList:: a list of binding of results of the query
+        lol_filtered:: a list of required predicates for fact generation
+    @return:
+        factList:: A list of facts, each fact is a 3 element list of a dicts
+        eg : [[{subject_lable,subject_uri},{predicate_lable,predicate_uri},{object_lable,object_uri}],[fact2],[fact3],...]
+    """
+    factList=[]
+    tempList=[]
+    tempList=lol_filtered
+
+    for k in range (0, len(bindingsList)):
+        for m in range(0, len(lol_filtered)):
+            fact = []
+            #For subject
+            sub = str(lol_filtered[m][0])
+            if var_dict[sub] != "": 
+                sub_uri = str(str(tempList[m][0]).replace(sub, 
+                    j['results']['bindings'][k][var_dict[sub]]['value']))
+                label_predicate = "http://www.w3.org/2000/01/rdf-schema#label"                                
+                sub_label = data.objects(subject=sub_uri, predicate=label_predicate)["response"][0]
+                dic = {"label":sub_label, "uri":sub_uri}
+                fact.append(dic)
+            else:
+                print "query error"
+                            
+            #predicate is already in place
+            pred=str(tempList[m][1])
+            pred_uri=pred.replace("<","")
+            pred_uri =pred_uri.replace(">","")
+            pred_label = " ".join(_extract_keywords_from_uri(pred_uri))
+            dic = {"label":pred_label, "uri":pred_uri}
+            fact.append(dic)
+            
+            #For object
+            obj = str(lol_filtered[m][2]) 
+            if var_dict[obj] != "": 
+                obj_term = str(str(tempList[m][2]).replace(obj, 
+                    j['results']['bindings'][k][var_dict[obj]]['value']))
+                # check if obj is uri or literal
+                if data.Term.type(obj_term) == "URI":
+                    label_predicate = "http://www.w3.org/2000/01/rdf-schema#label" 
+                    obj_label = data.objects(subject=obj_term, predicate=label_predicate)["response"][0]
+                    dic = {"label":obj_label, "uri":obj_term}
+                else:
+                    dic = {"label":obj_term, "uri":""}
+                fact.append(dic)
+            else:
+                print "query error"
+
+            factList.append(fact)
+    return factList
 
 
 #############################################################################################################################
@@ -1171,27 +1264,56 @@ def topk(query,num):
         graphs_LG :: list of nx graphs corresponding to each query in sparql_R
 
     """
-    keyword_list = _preprocess_query(query)  # to be implemented by aparna
+    keyword_list = _query_to_keyword(query)
+    print keyword_list
+    print
     K = _get_keyword_elements(keyword_list)
     _make_augmented_graph(K)
     R, LG = _alg1(num,16,K)
     sparql_R = [_get_sparql_query(q) for q in R]
     graphs_LG = [g[0] for g in LG]
-
+    for q in sparql_R:
+        print q
+        print
+    for g in graphs_LG:
+        import matplotlib.pyplot as plt
+        _nx.draw_networkx(g, withLabels=True)
+        plt.show()
     return sparql_R, graphs_LG
 
 
 def sparql_to_facts(sparql_query):
-    '''
-    to be implemented by apoorva
-    @param
-        sparql_query :: a sparql query
+    """
+    Function to parse the SPARQL query and the JSON result
+    
+    Fyzz and yapps parser are used to extract required segments
+    of the SPARQL query given as input
 
-    @return
-        facts
-    '''
+    @param:
+            sparql_query :: the SPARQL query in string fromat
+    @return:
+            factList:: A list of facts, each fact is a 3 element list of a tuple
+            eg : [[(subject_lable,subject_uri),(predicate_lable,predicate_uri),(object_lable,object_uri)],[fact2],[fact3],...]
+    """
+    print sparql_query
     sparql_result = data.query(sparql_query, format="json")
-    return sparql_result
+    print "and heer"
+    j= _simplejson.loads(sparql_result)
+    varList=j['head']['vars']
+    bindingsList=j['results']['bindings']
+    lol_sparql_query = _parse_query(sparql_query)
+    print lol_sparql_query
+    
+    #To obtain the list of triples without the predicates 
+    # with "type" and "label" as fragments
+    lol_filtered = _filter_predicates(lol_sparql_query)
+
+    var_dict = _coll.defaultdict(str)
+    for var in varList:
+            var_dict["SparqlVar('"+var+"')"  ] = var
+
+    factList = _extract_facts(var_dict,bindingsList,lol_filtered,j)
+    return factList
 
 
 
@@ -1202,8 +1324,7 @@ def sparql_to_facts(sparql_query):
 _trace = False
 if __name__ == "__main__":
 
-    import matplotlib.pyplot as plt
-    print
+    
     #print _keyword_index.keys()
     #for k,v in _keyword_index.iteritems():
     #    print k + " ::"
@@ -1212,58 +1333,16 @@ if __name__ == "__main__":
     #        print "\t"+str(ele)
     #    print
     #    print
-
+    import matplotlib.pyplot as plt
+    print
     _nx.draw_networkx(_summary_graph, withLabels=True)
     plt.show()
 
-    keyword_list = _preprocess_query("driver package")
-    #keyword_list = ["driver","package"]
-    #keyword_list = ["software", "windows"]
-    #keyword_list = ["java.math"]
-
-    K = _get_keyword_elements(keyword_list)
-    #print
-    #print K
-    #for l in K:
-    #    for ele in l:
-    #        print ele
-
-
-    _make_augmented_graph(K)
-    #print "==========="
-    #print "nodes"
-    #for n in _GE.graph.nodes(data=True):
-    #    print n
-    #print "==========="
-    #print "edges"
-    #for e in _GE.graph.edges(keys=True,data=True):
-    #    print e
-    #print
-    #print "################"
-    #print
-    _nx.draw_networkx(_GE.graph, withLabels=True)
-    plt.show()
-
-
-    R=_alg1(3,15,K)
-    print
-    print R
-    print
-    i = 1
-    for q in R:
-        print
-        print
-        print "query "+str(i)
-        print "======"
-        i+=1
-        print _get_sparql_query(q)
+    r,lg = topk("driver package",3)
     
-    sp=_get_sparql_query(R[0])
-    print
-    print "result"
-    print "========"
-    print data.query(sp)
-    
+    #print sparql_to_facts('SELECT DISTINCT ?var1 ?var0 WHERE {GRAPH ?g {?var1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/class> . ?var1 <http://www.w3.org/2000/01/rdf-schema#label> "Driver" . ?var0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/package> . ?var0 <http://www.w3.org/2000/01/rdf-schema#member> ?var1}}')
+
     print
     print
+
     
