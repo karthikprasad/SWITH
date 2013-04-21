@@ -572,13 +572,13 @@ def _get_subgraph_cost(graph):
 
 
 ######## SECTION 6 - QUERY INTERPRETATION ########
-'''
+
 def _query_to_keyword(query):
     """
     to be implemented
     """
     return query.split(" ")
-'''
+
 
 def _get_keyword_elements(keyword_list):
     """
