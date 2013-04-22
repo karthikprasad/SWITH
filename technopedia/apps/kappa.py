@@ -1273,17 +1273,17 @@ def topk(query,num):
 
     """
     keyword_list = _query_to_keyword(query)
-    print keyword_list
-    print
+    #print keyword_list
+    #print
     K = _get_keyword_elements(keyword_list)
     _make_augmented_graph(K)
     R,LG = _alg1(num,16,K)
     R = filter(None, R)  # remove empty lists
     sparql_R = [_get_sparql_query(q) for q in R]
     graphs_LG = [g[0] for g in LG]
-    for q in sparql_R:
-        print q
-        print
+    #for q in sparql_R:
+    #    print q
+    #    print
     #for g in graphs_LG:
     #    import matplotlib.pyplot as plt
     #    _nx.draw_networkx(g, withLabels=True)
@@ -1304,12 +1304,12 @@ def sparql_to_facts(sparql_query):
             factList:: A list of facts, each fact is a 3 element list of a tuple
             eg : [[(subject_lable,subject_uri),(predicate_lable,predicate_uri),(object_lable,object_uri)],[fact2],[fact3],...]
     """
-    print sparql_query
+    #print sparql_query
     sparql_result = data.query(sparql_query, format="json")
     j= _simplejson.loads(sparql_result)
-    print "results obtained"
-    print j
-    print
+    #print "results obtained"
+    #print j
+    #print
     varList=j['head']['vars']
     bindingsList=j['results']['bindings']
     lol_sparql_query = _parse_query(sparql_query)
@@ -1322,10 +1322,10 @@ def sparql_to_facts(sparql_query):
     var_dict = _coll.defaultdict(str)
     for var in varList:
             var_dict["SparqlVar('"+var+"')"  ] = var
-    print "args passed"
-    print "\nvar dict:\n"+ str(var_dict)
-    print "\nlol_filtered:\n"+ str(lol_filtered)
-    print
+    #print "args passed"
+    #print "\nvar dict:\n"+ str(var_dict)
+    #print "\nlol_filtered:\n"+ str(lol_filtered)
+    #print
     factList = _extract_facts(var_dict,bindingsList,lol_filtered,j)
     return factList
 
@@ -1347,13 +1347,13 @@ if __name__ == "__main__":
     #        print "\t"+str(ele)
     #    print
     #    print
-    '''
+    
     import matplotlib.pyplot as plt
     print
     _nx.draw_networkx(_summary_graph, withLabels=True)
     plt.show()
 
-    r,lg = topk("package",3)
+    r,lg = topk("driver",3)
     facts = sparql_to_facts(r[0])
     for fact in facts:
         print "=========="
@@ -1361,10 +1361,10 @@ if __name__ == "__main__":
             print node["label"]
 
 
-    '''
+    
     
     #print sparql_to_facts('SELECT DISTINCT ?var1 ?var0 WHERE {GRAPH ?g {?var1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/class> . ?var1 <http://www.w3.org/2000/01/rdf-schema#label> "Driver" . ?var0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/package> . ?var0 <http://www.w3.org/2000/01/rdf-schema#member> ?var1}}')
-    print sparql_to_facts('SELECT DISTINCT ?var0 WHERE {GRAPH ?g {?var0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/class> . ?var0 <http://www.w3.org/2000/01/rdf-schema#label> "Driver"}}')
+    #print sparql_to_facts('SELECT DISTINCT ?var0 WHERE {GRAPH ?g {?var0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/class> . ?var0 <http://www.w3.org/2000/01/rdf-schema#label> "Driver"}}')
     print
     print
 
