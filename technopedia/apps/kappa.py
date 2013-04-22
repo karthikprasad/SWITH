@@ -1172,7 +1172,7 @@ def _filter_predicates(lol_sparql_query):
 
         ourl=_urlparse.urlparse(predicate) # handy to extract the various parts of a uri like domain, path, fragment etc
         #print ourl.fragment
-        if ourl.fragment!="type" and ourl.fragment!="label":
+        if ourl.fragment!="label":# and ourl.fragment!="type":
             lol_filtered.append(triple)            
     return lol_filtered
 
@@ -1185,7 +1185,7 @@ def _extract_facts(var_dict,bindingsList,lol_filtered,j):
         bindingsList:: a list of binding of results of the query
         lol_filtered:: a list of required predicates for fact generation
     @return:
-        factList:: A list of facts, each fact is a 3 element list of a dicts
+        factList:: A dict of facts, each fact is a 3 element list of a dicts
         eg : [[{subject_lable,subject_uri},{predicate_lable,predicate_uri},{object_lable,object_uri}],[fact2],[fact3],...]
     """
     factList=[]
@@ -1194,18 +1194,20 @@ def _extract_facts(var_dict,bindingsList,lol_filtered,j):
 
     for k in range (0, len(bindingsList)):
         for m in range(0, len(lol_filtered)):
-            fact = []
+            #fact = []
+            fact = _coll.defaultdict(dict)
             #For subject
             sub = str(lol_filtered[m][0])
             if var_dict[sub] != "": 
                 sub_uri = str(str(tempList[m][0]).replace(sub, 
                     j['results']['bindings'][k][var_dict[sub]]['value']))
                 label_predicate = "http://www.w3.org/2000/01/rdf-schema#label"                                
-                sub_label = data.objects(subject=sub_uri, predicate=label_predicate)["response"][0]
+                sub_label = data.objects(subject=sub_uri, predicate=label_predicate)["response"][0] or sub_uri
                 dic = {"label":sub_label, "uri":sub_uri}
-                fact.append(dic)
+                #fact.append(dic)
+                fact["sub"] = dic
             else:
-                print "query error"
+                print "sub query error"
                             
             #predicate is already in place
             pred=str(tempList[m][1])
@@ -1213,23 +1215,29 @@ def _extract_facts(var_dict,bindingsList,lol_filtered,j):
             pred_uri =pred_uri.replace(">","")
             pred_label = " ".join(_extract_keywords_from_uri(pred_uri))
             dic = {"label":pred_label, "uri":pred_uri}
-            fact.append(dic)
+            #fact.append(dic)
+            fact["pred"] = dic
             
             #For object
             obj = str(lol_filtered[m][2]) 
+            # if object is a variable - ?var
             if var_dict[obj] != "": 
-                obj_term = str(str(tempList[m][2]).replace(obj, 
+                obj_uri = str(str(tempList[m][2]).replace(obj, 
                     j['results']['bindings'][k][var_dict[obj]]['value']))
-                # check if obj is uri or literal
-                if data.Term.type(obj_term) == "URI":
-                    label_predicate = "http://www.w3.org/2000/01/rdf-schema#label" 
-                    obj_label = data.objects(subject=obj_term, predicate=label_predicate)["response"][0]
-                    dic = {"label":obj_label, "uri":obj_term}
-                else:
-                    dic = {"label":obj_term, "uri":""}
-                fact.append(dic)
+                label_predicate = "http://www.w3.org/2000/01/rdf-schema#label" 
+                obj_label = data.objects(subject=obj_uri, predicate=label_predicate)["response"][0]
+                dic = {"label":obj_label, "uri":obj_uri}
+            # else if it is a lietral or a c-node
             else:
-                print "query error"
+                obj = obj.replace("<", "")
+                obj = obj.replace(">", "")
+                if data.Term.type(obj) == "URI":
+                    obj_label = " ".join(_extract_keywords_from_uri(obj))
+                    dic = {"label":obj_label, "uri":obj}
+                else:  # if it is a c-node
+                    dic = {"label":obj, "uri":""}
+            #fact.append(dic)
+            fact["obj"] = dic
 
             factList.append(fact)
     return factList
@@ -1269,16 +1277,17 @@ def topk(query,num):
     print
     K = _get_keyword_elements(keyword_list)
     _make_augmented_graph(K)
-    R, LG = _alg1(num,16,K)
+    R,LG = _alg1(num,16,K)
+    R = filter(None, R)  # remove empty lists
     sparql_R = [_get_sparql_query(q) for q in R]
     graphs_LG = [g[0] for g in LG]
     for q in sparql_R:
         print q
         print
-    for g in graphs_LG:
-        import matplotlib.pyplot as plt
-        _nx.draw_networkx(g, withLabels=True)
-        plt.show()
+    #for g in graphs_LG:
+    #    import matplotlib.pyplot as plt
+    #    _nx.draw_networkx(g, withLabels=True)
+    #    plt.show()
     return sparql_R, graphs_LG
 
 
@@ -1297,12 +1306,14 @@ def sparql_to_facts(sparql_query):
     """
     print sparql_query
     sparql_result = data.query(sparql_query, format="json")
-    print "and heer"
     j= _simplejson.loads(sparql_result)
+    print "results obtained"
+    print j
+    print
     varList=j['head']['vars']
     bindingsList=j['results']['bindings']
     lol_sparql_query = _parse_query(sparql_query)
-    print lol_sparql_query
+    #print lol_sparql_query
     
     #To obtain the list of triples without the predicates 
     # with "type" and "label" as fragments
@@ -1311,7 +1322,10 @@ def sparql_to_facts(sparql_query):
     var_dict = _coll.defaultdict(str)
     for var in varList:
             var_dict["SparqlVar('"+var+"')"  ] = var
-
+    print "args passed"
+    print "\nvar dict:\n"+ str(var_dict)
+    print "\nlol_filtered:\n"+ str(lol_filtered)
+    print
     factList = _extract_facts(var_dict,bindingsList,lol_filtered,j)
     return factList
 
@@ -1333,15 +1347,24 @@ if __name__ == "__main__":
     #        print "\t"+str(ele)
     #    print
     #    print
+    '''
     import matplotlib.pyplot as plt
     print
     _nx.draw_networkx(_summary_graph, withLabels=True)
     plt.show()
 
-    r,lg = topk("driver package",3)
+    r,lg = topk("package",3)
+    facts = sparql_to_facts(r[0])
+    for fact in facts:
+        print "=========="
+        for node in fact:
+            print node["label"]
+
+
+    '''
     
     #print sparql_to_facts('SELECT DISTINCT ?var1 ?var0 WHERE {GRAPH ?g {?var1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/class> . ?var1 <http://www.w3.org/2000/01/rdf-schema#label> "Driver" . ?var0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/package> . ?var0 <http://www.w3.org/2000/01/rdf-schema#member> ?var1}}')
-
+    print sparql_to_facts('SELECT DISTINCT ?var0 WHERE {GRAPH ?g {?var0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/class> . ?var0 <http://www.w3.org/2000/01/rdf-schema#label> "Driver"}}')
     print
     print
 
