@@ -573,11 +573,83 @@ def _get_subgraph_cost(graph):
 
 ######## SECTION 6 - QUERY INTERPRETATION ########
 
+def _preprocess(query):
+    """
+    function pre processes the query removing stop words and punctuation
+    @param:
+        query::The keyword query that is entered by the user
+    @return:
+        The cleaned keyword query
+    """
+    words = _re.findall(r'\w+', query,flags = _re.UNICODE | _re.LOCALE) 
+    important_words = filter(lambda x: x not in _nltk_corpus.stopwords.words('english'), words)
+    processed_words = []
+    """
+    ####uncomment if stemming is required#####
+    st = _stemmer.LancasterStemmer()
+    for word in important_words:
+        processed_words.append(st.stem(word))
+    return processed_words
+    """
+    
+    processed_query = " ".join(important_words)
+    return processed_query
+        
+        
+def _get_in_built_match_score(s):
+    """
+    function computes the score of how well the n-gram matches the given key word using a built in scoring technique
+    @param:
+        s::sequence object
+    @return:
+        score:: a floating value 0.0-1.0
+        threshold::a threshold value for the score
+    """
+    return s.ratio(),0.8
+    
+def _get_custom_match_score(s):
+    """
+    function computes the score of how well the n-gram matches the given key word using a custom function
+    @param:
+        s::sequence object
+    @return:
+        score:: a floating value 0.0-1.0
+        threshold::a threshold value for the score
+    """
+    blocks = s.get_matching_blocks()
+    score = 0.0
+    for block in blocks:
+        if block.size > 3:
+            score = score + block.size 
+            score = score / len(n_gram)
+    return score,0.5
+
+def _query_to_keywords(query):
+    return query.split(" ")
+
 def _query_to_keyword(query):
     """
-    to be implemented
+    function matches the keyword query string to the keyword index
+    @param:
+        query::The keyword query that needs to be mapped
+    @return:
+        The dictionary of top ten matching keywords from the index
+    
     """
-    return query.split(" ")
+    processed_query = _preprocess(query)
+    keyword_list = processed_query.split(" ")
+    keyword_matches = _coll.defaultdict(float)
+    
+    
+    for keyword in keyword_list:
+        for key in _keyword_index.keys():
+            s = _difflib.SequenceMatcher(None, keyword.lower(), key.lower())
+            max = 0
+            score,threshold = _get_in_built_match_score(s)
+            #could change threshold 
+            if score > threshold and score > max :
+                keyword_matches[key] = score
+    return keyword_matches.keys()
 
 
 def _get_keyword_elements(keyword_list):
@@ -755,7 +827,7 @@ def _alg1(num, dmax, K):
                 print "==================="
                 print
             ##########################
-    return R,LG
+    return R
 
 
 def _remove_ge(ge, ge_list):
@@ -782,7 +854,7 @@ def _remove_ge(ge, ge_list):
 #############################################################################################################################
 
 ######## ALGO 2 ########  
-
+_connecting_ele = 0
 def _alg2(n, m, LG, LQ, k, R):
     ##########################
     if _trace:
@@ -790,9 +862,13 @@ def _alg2(n, m, LG, LQ, k, R):
         print "in alg2:"
     ##########################
     if _is_connected(n,m):
+        global _connecting_ele
+        _connecting_ele += 1
+        if len(R) > 0 and _connecting_ele >= 5:
+            return R, LG
         ##########################
         if _trace:
-            print "\tconntected"+str(n)
+            print "\tconnected"+str(n)
             print
         ##########################
         #process new subgraphs in n
@@ -802,9 +878,10 @@ def _alg2(n, m, LG, LQ, k, R):
             subgraph = _merge_paths_to_graph(paths)
             ##########################
             if _trace:
-                import matplotlib.pyplot as plt
-                _nx.draw_networkx(subgraph, withLabels=True)
-                plt.show()
+                pass
+                #import matplotlib.pyplot as plt
+                #_nx.draw_networkx(subgraph, withLabels=True)
+                #plt.show()
             ##########################
             cost_augmented_tuple = _update_cost_of_subgraph(subgraph)
             ##########################
@@ -1097,22 +1174,22 @@ def _map_edge(e,node_dict):
         # aedge -> edge(var(n1), vnode label)
         edge_query.append(""+node_dict[e[0]]+" <"+e[2]+"> \""+e[1]+"\"")
         # handle class BNode
-        if e[0] != "BNode" or e[0] != "Thing":
+        if e[0] != "BNode" and e[0] != "Thing":
             # type(var(n1), cnode label)
             edge_query.append(""+node_dict[e[0]]+" <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <"+e[0]+">")
 
     elif e in _GE.redges:
         ##########################
-        #print "\t"+str(e)
+        print "\t"+str(e)
         ##########################
         # e[0] is cnode1 label
         # e[1] is cnode2 label
         # e[2] is edge label
         # redge -> edge(var(n1), var(n2))
         edge_query.append(""+node_dict[e[0]]+" <"+e[2]+"> "+node_dict[e[1]]+"")
-        if e[0] != "BNode" or e[0] != "Thing":
+        if e[0] != "BNode" and e[0] != "Thing":
             edge_query.append(""+node_dict[e[0]]+" <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <"+e[0]+">")
-        if e[1] != "BNode" or e[1] != "Thing":
+        if e[1] != "BNode" and e[1] != "Thing":
             edge_query.append(""+node_dict[e[1]]+" <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <"+e[1]+">")
     
     return edge_query
@@ -1144,6 +1221,28 @@ def _get_sparql_query(conj_query):
 ######## SPARQL TO ENGLISH CONVERSION HELPER FUNCTIONS ########
 def _parse_query(query_string):
     """
+    @param:
+        query_string:: The oroginal query in string fromat
+    @return:
+        lol_sparql_query::A list of list that contains the where part query split on "."
+    """
+    query_string = query_string.replace("GRAPH ?g {","")
+    query_string = query_string[:len(query_string)-1]
+    lol_list = []
+    where_clause = query_string[query_string.index("WHERE")+7:len(query_string)-1]
+    query_list = where_clause.split(" . ")
+    for query in query_list:
+        query = query.strip()
+        sop_list = _re.split("\s+",query)
+        for i in range(0,len(sop_list)):
+            sop_list[i] = sop_list[i].replace("?var","var")
+        sop_tuple = (sop_list[0],sop_list[1]," ".join(sop_list[2:]))
+        lol_list.append(sop_tuple)
+    return lol_list
+
+
+def _parse_query1(query_string):
+    """
     function which cleans and parses the sparql query
     @param:
             query_string:: The oroginal query in string fromat
@@ -1163,17 +1262,21 @@ def _filter_predicates(lol_sparql_query):
     @param:
             lol_sparql_query:: A list of list which each contains apart of sparql query
     @return::
-            lol_filterted::A list of list of filtered queries
+            lol_filtered::A list of list of filtered queries
     """
     lol_filtered=[]       
     for triple in lol_sparql_query:
+        if not isinstance(triple[1], str):
+            lol_filtered.append(triple)
+            return lol_filtered
+
         predicate=triple[1].replace("<","")
         predicate=predicate.replace(">","")
 
         ourl=_urlparse.urlparse(predicate) # handy to extract the various parts of a uri like domain, path, fragment etc
         #print ourl.fragment
         if ourl.fragment!="label":# and ourl.fragment!="type":
-            lol_filtered.append(triple)            
+            lol_filtered.append(triple)
     return lol_filtered
 
 
@@ -1191,41 +1294,79 @@ def _extract_facts(var_dict,bindingsList,lol_filtered,j):
     factList=[]
     tempList=[]
     tempList=lol_filtered
-
+    print
+    print
+    print "vardict"
+    print var_dict
+    print "lol_filtered"
+    print lol_filtered
     for k in range (0, len(bindingsList)):
         for m in range(0, len(lol_filtered)):
             #fact = []
             fact = _coll.defaultdict(dict)
             #For subject
             sub = str(lol_filtered[m][0])
+            sub = sub.replace("u","")
+            print sub
+            print "var_dict[sub]"
+            print var_dict[sub]
             if var_dict[sub] != "": 
-                sub_uri = str(str(tempList[m][0]).replace(sub, 
+                sub_uri = str(str(tempList[m][0]).replace("u","").replace(sub, 
                     j['results']['bindings'][k][var_dict[sub]]['value']))
-                label_predicate = "http://www.w3.org/2000/01/rdf-schema#label"                                
-                sub_label = data.objects(subject=sub_uri, predicate=label_predicate)["response"][0] or sub_uri
+                label_predicate = "http://www.w3.org/2000/01/rdf-schema#label"
+                print sub_uri
+                try:                            
+                    sub_label = data.objects(subject=sub_uri, predicate=label_predicate)["response"][0]
+                except:
+                    sub_label = sub_uri
                 dic = {"label":sub_label, "uri":sub_uri}
                 #fact.append(dic)
                 fact["sub"] = dic
             else:
                 print "sub query error"
-                            
-            #predicate is already in place
-            pred=str(tempList[m][1])
-            pred_uri=pred.replace("<","")
-            pred_uri =pred_uri.replace(">","")
-            pred_label = " ".join(_extract_keywords_from_uri(pred_uri))
-            dic = {"label":pred_label, "uri":pred_uri}
+            
+            pred = str(lol_filtered[m][1]) 
+            pred = pred.replace("u","")
+            print "pred"
+            print pred
+            # if predicate is a variable - ?var
+            if var_dict[pred] != "": 
+                print "****************"
+                pred_uri = str(str(tempList[m][1]).replace("u","").replace(pred, 
+                    j['results']['bindings'][k][var_dict[pred]]['value']))
+                print "pred_uri"
+                print pred_uri
+                pred_label = " ".join(_extract_keywords_from_uri(pred_uri))
+                dic = {"label":pred_label, "uri":pred_uri}
+            # else if it is a literal or a c-node
+            else:
+                pred = pred.replace("<", "")
+                pred = pred.replace(">", "")
+                if data.Term.type(pred) == "URI":
+                    pred_label = " ".join(_extract_keywords_from_uri(pred))
+                    dic = {"label":pred_label, "uri":pred}
+                else:  # if it is a c-node
+                    dic = {"label":pred, "uri":""}
             #fact.append(dic)
             fact["pred"] = dic
-            
+
             #For object
             obj = str(lol_filtered[m][2]) 
+            obj = obj.replace("u","")
+            print "obj"
+            print obj
             # if object is a variable - ?var
             if var_dict[obj] != "": 
-                obj_uri = str(str(tempList[m][2]).replace(obj, 
+                obj_uri = str(str(tempList[m][2]).replace("u","").replace(obj, 
                     j['results']['bindings'][k][var_dict[obj]]['value']))
-                label_predicate = "http://www.w3.org/2000/01/rdf-schema#label" 
-                obj_label = data.objects(subject=obj_uri, predicate=label_predicate)["response"][0]
+                print "onj_uri :: "+str(obj_uri)
+                label_predicate = "http://www.w3.org/2000/01/rdf-schema#label"
+                try: 
+                    obj_label = data.objects(subject=obj_uri, predicate=label_predicate)["response"][0]
+                except:
+                    obj_label = obj_uri
+                print "obj_label"
+                print obj_label
                 dic = {"label":obj_label, "uri":obj_uri}
             # else if it is a lietral or a c-node
             else:
@@ -1269,26 +1410,28 @@ def topk(query,num):
 
     @return
         sparql_R :: list of sparql queries
-        graphs_LG :: list of nx graphs corresponding to each query in sparql_R
 
     """
-    keyword_list = _query_to_keyword(query)
-    #print keyword_list
-    #print
+    keyword_list = _query_to_keywords(query)
+    print keyword_list
     K = _get_keyword_elements(keyword_list)
+    print "keyword element list obtained"
+    print K
+    print
     _make_augmented_graph(K)
-    R,LG = _alg1(num,16,K)
+    print "aug graph obtained"
+    R = _alg1(num,7,K)
     R = filter(None, R)  # remove empty lists
+    print R
     sparql_R = [_get_sparql_query(q) for q in R]
-    graphs_LG = [g[0] for g in LG]
     #for q in sparql_R:
     #    print q
     #    print
-    #for g in graphs_LG:
-    #    import matplotlib.pyplot as plt
-    #    _nx.draw_networkx(g, withLabels=True)
-    #    plt.show()
-    return sparql_R, graphs_LG
+    #for q in R:
+    #    print q
+    #    print
+    print sparql_R
+    return sparql_R
 
 
 def sparql_to_facts(sparql_query):
@@ -1304,24 +1447,39 @@ def sparql_to_facts(sparql_query):
             factList:: A list of facts, each fact is a 3 element list of a tuple
             eg : [[(subject_lable,subject_uri),(predicate_lable,predicate_uri),(object_lable,object_uri)],[fact2],[fact3],...]
     """
-    #print sparql_query
+    if _trace:
+        print "====================="
+        print sparql_query
+
     sparql_result = data.query(sparql_query, format="json")
+    if _trace:
+        print "sparql result :: " +str(sparql_result)
+
     j= _simplejson.loads(sparql_result)
     #print "results obtained"
     #print j
     #print
     varList=j['head']['vars']
     bindingsList=j['results']['bindings']
+    if _trace:
+        print "BINDINGS LIST ::" + str(bindingsList)
+
+    # check if sparql query returned a result
+    if len(bindingsList) == 0:
+        print "returning none"
+        return None
     lol_sparql_query = _parse_query(sparql_query)
-    #print lol_sparql_query
+    print "lol sparql query :: "
+    print lol_sparql_query
     
     #To obtain the list of triples without the predicates 
     # with "type" and "label" as fragments
     lol_filtered = _filter_predicates(lol_sparql_query)
+    print "lol filtered :: "+str(lol_filtered)
 
     var_dict = _coll.defaultdict(str)
     for var in varList:
-            var_dict["SparqlVar('"+var+"')"  ] = var
+            var_dict[var] = str(var)
     #print "args passed"
     #print "\nvar dict:\n"+ str(var_dict)
     #print "\nlol_filtered:\n"+ str(lol_filtered)
@@ -1330,35 +1488,48 @@ def sparql_to_facts(sparql_query):
     return factList
 
 
+def conj_to_facts(conj_query):
+    """
+    Function to parse the CONJUNCTIVE query and the JSON result
+
+    @param:
+            conj_query :: the CONJUNCTIVE query in string fromat
+    @return:
+            factList:: A list of facts, each fact is a 3 element list of a tuple
+            eg : [[(subject_lable,subject_uri),(predicate_lable,predicate_uri),(object_lable,object_uri)],[fact2],[fact3],...]
+    """
+    sparql_query = _get_sparql_query(conj_query)
+    return sparql_to_facts(sparql_query)
+
 
 #############################################################################################################################
 #############################################################################################################################
 
 
-_trace = False
+_trace = True
 if __name__ == "__main__":
 
-    
+    '''
     #print _keyword_index.keys()
-    #for k,v in _keyword_index.iteritems():
-    #    print k + " ::"
-    #    print "========="
-    #    for ele in v:
-    #        print "\t"+str(ele)
-    #    print
-    #    print
+    for k,v in _keyword_index.iteritems():
+        print k + " ::"
+        print "========="
+        for ele in v:
+            print "\t"+str(ele)
+        print
+        print
     
+    '''
     import matplotlib.pyplot as plt
     print
     _nx.draw_networkx(_summary_graph, withLabels=True)
     plt.show()
 
-    r,lg = topk("driver",3)
-    facts = sparql_to_facts(r[0])
+
+    spar = topk("package adapter_name",2)
+    facts = sparql_to_facts(spar[0])
     for fact in facts:
-        print "=========="
-        for node in fact:
-            print node["label"]
+        print fact
 
 
     

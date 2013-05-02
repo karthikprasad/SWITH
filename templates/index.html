@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>kappa</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Appication accessing Technopedia">
+  <meta name="author" content="karthik(karthikprasad@engineer.com)">
+
+  <!-- Le styles -->
+  <link href="../static/css/bootstrap.css" rel="stylesheet">
+  <style type="text/css">
+  body {
+    padding-top: 60px;
+    padding-bottom: 40px;
+    /*background-image: -webkit-radial-gradient(center, ellipse farthest-corner, #FFFFFF 0%, #D3EFBA 100%);*/
+  }
+  
+  p#waitmsg{
+    display:none;
+    color: #826FAA;
+    font-size: 18px;
+    font-family: cursive;
+    text-align:center;
+    margin:80px 0 10px 0;
+  }
+
+  div#outputs{
+    text-align: center;
+    font-family: cursive;
+    font-size: 38px;
+    margin:80px 0 10px 0;
+  }
+
+  div.results{
+    box-shadow: inset 0 0 15px #ccc, inset 0 0 1px #666, 0 0 1px #ccc;
+    border-radius: 15px;
+    padding: 12px 0 0.01565px 0;
+    margin: 80px 0 10px 0;
+    width: 100%;
+    font-family: Georgia, serif;
+  }
+
+  .containertitle{
+    font-family: Verdana, sans-serif;
+    font-size: 12px;
+    color: #695A7E;
+    height: 17px;
+    margin-left: 12px;
+  }
+
+  .resultlist{
+    padding: 12px;
+  }
+
+  .resulttitle{
+    font-size: 17px;
+  }
+
+  .resultdesc{
+    font-size: 13px;
+  }
+
+  li.result{
+    margin-bottom: 20px;
+  }
+
+  li.navbarli{
+    font-size: 17px;
+    font-family:Times,serif;
+  }
+
+  @-webkit-keyframes loading{
+    from{width:0%;}to{width:100%;}
+  }
+
+  div.progress{
+    margin-top: 8px;
+    margin-left: 5%;
+    width: 90%;
+    text-align: center;
+  }
+  div#loading{
+    padding: 6px;
+    width: 0%;
+    -webkit-animation: loading 10s ease-out 0s normal none infinite;
+  }
+
+  div#dummyscript{
+    display: none;
+  }
+
+  div#mindmap {
+      margin-left:auto;
+      margin-right:auto;
+      margin-bottom: 20px;
+      position: relative;
+      border:1px solid black;
+      border-radius: 4px;
+      -moz-border-radius: 4px;
+      -webkit-border-radius: 4px;
+      background: #fff;
+      width: 90%;
+      height:300px;
+      top: 0;
+      left: 0;
+    }
+
+  .node{
+    min-width: 50px;
+  }
+
+  @media (max-width: 768px){
+    #col1, #col3{
+      display:none;
+    }
+  }
+
+
+  </style>
+  <link href="../static/css/bootstrap-responsive.css" rel="stylesheet">
+
+
+  <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+      <![endif]-->
+
+      <!-- Fav and touch icons -->
+      <link rel="shortcut icon" href="../static/img/kappa.ico">
+</head>
+
+<body id="body">
+
+      <div class="navbar navbar-fixed-top">
+        <div class="navbar-inner">
+          <div class="container">
+            <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+            </a>
+            <a class="brand" style="padding-bottom:0px; padding-right:8px;" href="/">
+              <img style="height:32px; width:53px; margin:-4px 0 0 4px" src="../static/img/kappa-black.png" />
+            </a>
+            <div class="nav-collapse collapse nav"> 
+              <ul class="nav">
+                <li class="navbarli" style="padding-top:12px; padding-bottom:10px;">
+                  ...the Technical Fact Engine
+                </li> 
+              </ul>
+            </div>
+            <div class="nav-collapse collapse">
+              <ul class="nav pull-right">
+                <li class="navbarli" id="home" class="active"><a href="/">Home</a></li>
+                <li class="navbarli" id="about"><a href="/about">About</a></li> 
+              </ul>
+            </div><!--/.nav-collapse -->
+          </div>
+        </div>
+      </div>
+
+
+
+      <div id="content" class="container">
+
+        <div class="row">
+
+          <div id="col1"class="span2" style="float:left"></div>
+
+          <div id="col2" class=" row span8">
+
+            <!--<h1 style="font-family:fantasy; text-align:center">Technopedia kappa</h1>-->
+            <div  style="text-align:center; margin: 20px 0 10px 0;" >
+              <img style="height:108px"src="../static/img/Technopedia-black.png" />
+              <img style="height:83px; margin-top:20px"src="../static/img/kappa-red.png" />
+            </div>
+            <br />
+            <div>
+              <form class="form-search" style="text-align:center;" action="/populate" onsubmit="populate(); return false;">
+                <div class="input-append">
+                  <input id="searchbox" class="input-xxlarge search-query span6" type="text" placeholder="Search..." autofocus />
+                  <button type="submit" class="btn"><i class="icon-search"></i></button>
+                </div>
+              </form>
+            </div>
+                       
+            <div id="output" style="display:none;">
+              <div id="facts" class="results"></div>
+              <div id="bingresults" class="results"></div>
+              <div id="soresults" class="results"></div>
+            </div>
+            
+          </div><!-- /col2 -->
+
+          <div id="col3" class="span2"></div>
+
+      </div>
+
+        <hr>
+
+        <footer style="text-align:center">
+          
+          <p>This application has been built for academic purpose and is not intended for commercial use.</p>
+        </footer>
+
+      </div> <!-- /container -->
+
+    <!-- Le javascript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="../static/js/jquery-182.js"></script>
+    <script src="../static/js/bootstrap-transition.js"></script>
+    <script src="../static/js/bootstrap-alert.js"></script>
+    <script src="../static/js/bootstrap-modal.js"></script>
+    <script src="../static/js/bootstrap-dropdown.js"></script>
+    <script src="../static/js/bootstrap-scrollspy.js"></script>
+    <script src="../static/js/bootstrap-tab.js"></script>
+    <script src="../static/js/bootstrap-tooltip.js"></script>
+    <script src="../static/js/bootstrap-popover.js"></script>
+    <script src="../static/js/bootstrap-button.js"></script>
+    <script src="../static/js/bootstrap-collapse.js"></script>
+    <script src="../static/js/bootstrap-carousel.js"></script>
+    <script src="../static/js/bootstrap-typeahead.js"></script>
+    <script src="../static/js/sigma.min.js"></script>
+    <script src="../static/js/sigma.forceatlas2.js"></script>
+
+
+
+    <!-- Le scripts for ajax -->
+    <script type="text/javascript">
+
+      populate = function(){
+        // make output div visible
+        $("div#output").css("display","block");
+
+        // inject loading bars into all 3 sections
+        var loading_code = "\
+        <div class='progress progress-warning progress-striped' style='height:6px'>\
+          <div id='loading' class='bar'></div>\
+        </div>";
+        $("div#facts").html(loading_code);
+        $("div#bingresults").html(loading_code);
+        $("div#soresults").html(loading_code);
+
+        //extract query
+        var q = $("input#searchbox").val();
+
+        // load results
+        load_bingresults(q);
+        load_soresults(q);
+        load_facts(q);
+      }
+
+      load_facts = function(q){
+        $.get(
+              "/results", 
+              {
+                //"q": encodeURIComponent($("input#searchbox").val()),
+                "q": $("input#searchbox").val(),
+                "type": "facts"
+              },
+              function(htmlResponse){
+                $("div#facts").html(htmlResponse);
+              }
+            );
+      }
+
+      load_bingresults = function(q){       
+        $.get(
+              "/results", 
+              {
+                //"q": encodeURIComponent($("input#searchbox").val()),
+                "q": $("input#searchbox").val(),
+                "type": "bing"
+              },
+              function(htmlResponse){
+                $("div#bingresults").html(htmlResponse);
+              }
+            );
+      }
+
+      load_soresults = function(q){
+        $.get(
+            "/results", 
+            {
+              //"q": encodeURIComponent($("input#searchbox").val()),
+              "q": $("input#searchbox").val(),
+              "type": "stackoverflow"
+            },
+            function(htmlResponse){
+              $("div#soresults").html(htmlResponse);
+            }
+          );
+      }
+
+    </script>
+
+</body>
+</html>

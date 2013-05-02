@@ -13,7 +13,7 @@ import simplejson as _simplejson
 
 
 # database name and connection string
-_NAME = "javadocs"
+_NAME = "technopedia_javadocs"
 _CONN_STR = "host=localhost,user=root,password=root"
 
 # global variable (module-level)
@@ -701,5 +701,14 @@ if __name__ == "__main__":
         {?var1 <http://www.w3.org/2000/01/rdf-schema#label> "Driver"}.
         {?var0 <http://www.w3.org/2000/01/rdf-schema#member> ?var1}}}'''
 
-    print query(q1)
-    print query(q2)
+    q3= 'SELECT DISTINCT ?var3 ?var2 ?var0 WHERE {GRAPH ?g {?var0 <http://www.w3.org/2000/01/rdf-schema#member> ?var3 . ?var2 <http://www.w3.org/2000/01/rdf-schema#member> ?var0 .?var3 <http://www.w3.org/2000/01/rdf-schema#label> "decode" .?var2 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/package> .?var0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/class> .?var3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/method> .}}'
+
+    q4= 'SELECT DISTINCT ?var2 ?var0 ?var3 WHERE {GRAPH ?g {?var3 <http://www.w3.org/2000/01/rdf-schema#label> "decode" . ?var3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/method> . ?var0 <http://www.w3.org/2000/01/rdf-schema#member> ?var3 . ?var0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/class> . ?var2 <http://www.w3.org/2000/01/rdf-schema#member> ?var0 . ?var2 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/package>}}'
+
+    #q3= 'SELECT DISTINCT ?var3 ?var2 ?var0 WHERE {GRAPH ?g {?var0 <http://www.w3.org/2000/01/rdf-schema#member> ?var3 . ?var3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/method> . ?var2 <http://www.w3.org/2000/01/rdf-schema#member> ?var0 . ?var0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.pes.edu/type/class> . ?var3 <http://www.w3.org/2000/01/rdf-schema#label> "getDriver"}}'
+
+
+    #print query(q1)
+    #print query(q2)
+    print query(q4)
+    print query(q3)
