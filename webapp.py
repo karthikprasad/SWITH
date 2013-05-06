@@ -35,10 +35,32 @@ def get_so_results(q):
     feed = fp.parse(feed_url)
     return feed["items"]
 
-def get_facts(q):
-    # if q in one keyword
-    if len(q.split(" ")) == 1:
+def get_optimized_facts(q):
+    conj_query = None
+    query_words = q.split(" ")
+
+    if len(query_words) == 1:
         conj_query = "?var1 ?var2 ?var3 . ?var1 <http://www.w3.org/2000/01/rdf-schema#label> \""+q+"\""
+
+    elif len(query_words) == 2:
+        q1 = query_words[0]
+        q2 = query_words[1]
+        if q1 == "type":
+            conj_query = "?var1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?var2 . ?var1 <http://www.w3.org/2000/01/rdf-schema#label> \""+q2+"\""
+        elif q2 == "type":
+            conj_query = "?var1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?var2 . ?var1 <http://www.w3.org/2000/01/rdf-schema#label> \""+q1+"\""
+
+        elif q1 == "returns":
+            conj_query = "?var1 <http://www.pes.edu/predicate/returns> ?var2 . ?var2 <http://www.w3.org/2000/01/rdf-schema#label> \""+q2+"\""
+    
+    return conj_query
+
+
+
+
+def get_facts(q):
+    conj_query = get_optimized_facts(q)
+    if conj_query is not None:
         sparql_query = kappa._get_sparql_query(conj_query)
         facts = kappa.sparql_to_facts(sparql_query)
     else:

@@ -12,6 +12,22 @@ import urlparse as _urlparse
 
 from technopedia import data
 
+
+def suppressprint(f):
+    def what(s=None):
+        pass
+    return what
+
+
+_trace = True
+
+@suppressprint
+def myprint(s=None):
+    if s is None:
+        print "\n"
+    else:
+        print s
+
 ######## GRAPH ELEMENT ########
 
 class _GE:
@@ -382,8 +398,8 @@ def _extract_keywords_from_uri(uri):
         #checking for the hash part of the URI 
         if _re.search(r'[a-z]+#[a-z]+',keyword_list[keyword_list_index]):
             pre_hash_keyword,post_hash_keyword = _clean_hash(keyword_list[keyword_list_index])
-            keyword_list[keyword_list_index] = pre_hash_keyword
-            keyword_list.append(post_hash_keyword)
+            keyword_list[keyword_list_index] = post_hash_keyword
+            #keyword_list.append(post_hash_keyword)
         
         else:
             #check for camelCases
@@ -625,7 +641,10 @@ def _get_custom_match_score(s):
     return score,0.5
 
 def _query_to_keywords(query):
-    return query.split(" ")
+    query = query.lower()
+    keywords = query.split(" ")
+    keywords = [keyword.replace("_", " ") for keyword in keywords]
+    return keywords
 
 def _query_to_keyword(query):
     """
@@ -796,9 +815,7 @@ def _alg1(num, dmax, K):
             # reomove the parent from list
             if c.parent is not None:
                 _remove_ge(c.parent.graph_element, neighbours)
-            ##########################
-            #print "neigh:: " + str([str(ne) for ne in neighbours])
-            ##########################
+
             # if neighbours not empty
             if len(neighbours) > 0:
                 for neighbour in neighbours:
@@ -1161,12 +1178,12 @@ def _map_edge(e,node_dict):
         edge_query :: list of conjunctive query predicates for the edge
     """
     ##########################
-    #print e
+    myprint(e)
     ##########################
     edge_query = []
     if e in _GE.aedges:
         ##########################
-        #print "\t"+str(e)
+        myprint("\t"+str(e))
         ##########################
         # e[0] is cnode label
         # e[1] is vnode label
@@ -1180,7 +1197,7 @@ def _map_edge(e,node_dict):
 
     elif e in _GE.redges:
         ##########################
-        print "\t"+str(e)
+        myprint("\t"+str(e))
         ##########################
         # e[0] is cnode1 label
         # e[1] is cnode2 label
@@ -1294,48 +1311,49 @@ def _extract_facts(var_dict,bindingsList,lol_filtered,j):
     factList=[]
     tempList=[]
     tempList=lol_filtered
-    print
-    print
-    print "vardict"
-    print var_dict
-    print "lol_filtered"
-    print lol_filtered
+
     for k in range (0, len(bindingsList)):
         for m in range(0, len(lol_filtered)):
             #fact = []
             fact = _coll.defaultdict(dict)
+            
             #For subject
             sub = str(lol_filtered[m][0])
             sub = sub.replace("u","")
-            print sub
-            print "var_dict[sub]"
-            print var_dict[sub]
+            ##########################################
+            myprint("SUB ::"+str(sub))
+            ##########################################
+
             if var_dict[sub] != "": 
                 sub_uri = str(str(tempList[m][0]).replace("u","").replace(sub, 
                     j['results']['bindings'][k][var_dict[sub]]['value']))
+                ##########################################
+                myprint("sub_uri :: " + str(sub_uri))
+                ##########################################                
                 label_predicate = "http://www.w3.org/2000/01/rdf-schema#label"
-                print sub_uri
                 try:                            
                     sub_label = data.objects(subject=sub_uri, predicate=label_predicate)["response"][0]
                 except:
                     sub_label = sub_uri
+                
                 dic = {"label":sub_label, "uri":sub_uri}
-                #fact.append(dic)
                 fact["sub"] = dic
             else:
                 print "sub query error"
             
             pred = str(lol_filtered[m][1]) 
             pred = pred.replace("u","")
-            print "pred"
-            print pred
+            ##########################################
+            myprint("PRED :: "+str(pred))
+            ##########################################
+
             # if predicate is a variable - ?var
             if var_dict[pred] != "": 
-                print "****************"
                 pred_uri = str(str(tempList[m][1]).replace("u","").replace(pred, 
                     j['results']['bindings'][k][var_dict[pred]]['value']))
-                print "pred_uri"
-                print pred_uri
+                ##########################################
+                myprint("pred_uri :: " + str(pred_uri))
+                ##########################################  
                 pred_label = " ".join(_extract_keywords_from_uri(pred_uri))
                 dic = {"label":pred_label, "uri":pred_uri}
             # else if it is a literal or a c-node
@@ -1347,26 +1365,28 @@ def _extract_facts(var_dict,bindingsList,lol_filtered,j):
                     dic = {"label":pred_label, "uri":pred}
                 else:  # if it is a c-node
                     dic = {"label":pred, "uri":""}
-            #fact.append(dic)
             fact["pred"] = dic
 
             #For object
             obj = str(lol_filtered[m][2]) 
             obj = obj.replace("u","")
-            print "obj"
-            print obj
+            ##########################################
+            myprint("OBJ :: "+str(obj))
+            ##########################################
+
             # if object is a variable - ?var
             if var_dict[obj] != "": 
                 obj_uri = str(str(tempList[m][2]).replace("u","").replace(obj, 
                     j['results']['bindings'][k][var_dict[obj]]['value']))
-                print "onj_uri :: "+str(obj_uri)
+                ##########################################
+                myprint("obj_uri :: " + str(obj_uri))
+                ##########################################
                 label_predicate = "http://www.w3.org/2000/01/rdf-schema#label"
                 try: 
                     obj_label = data.objects(subject=obj_uri, predicate=label_predicate)["response"][0]
                 except:
                     obj_label = obj_uri
-                print "obj_label"
-                print obj_label
+
                 dic = {"label":obj_label, "uri":obj_uri}
             # else if it is a lietral or a c-node
             else:
@@ -1377,7 +1397,7 @@ def _extract_facts(var_dict,bindingsList,lol_filtered,j):
                     dic = {"label":obj_label, "uri":obj}
                 else:  # if it is a c-node
                     dic = {"label":obj, "uri":""}
-            #fact.append(dic)
+
             fact["obj"] = dic
 
             factList.append(fact)
@@ -1413,24 +1433,29 @@ def topk(query,num):
 
     """
     keyword_list = _query_to_keywords(query)
-    print keyword_list
+    ##########################################
+    myprint(keyword_list)
+    ##########################################
     K = _get_keyword_elements(keyword_list)
-    print "keyword element list obtained"
-    print K
-    print
+    ##########################################
+    myprint("keyword element list obtained")
+    myprint(K)
+    myprint()
+    ##########################################
     _make_augmented_graph(K)
-    print "aug graph obtained"
+    ##########################################
+    myprint("aug graph obtained")
+    ##########################################
     R = _alg1(num,7,K)
     R = filter(None, R)  # remove empty lists
-    print R
+    ##########################################
+    myprint(R)
+    ##########################################
     sparql_R = [_get_sparql_query(q) for q in R]
-    #for q in sparql_R:
-    #    print q
-    #    print
-    #for q in R:
-    #    print q
-    #    print
-    print sparql_R
+    ##########################################
+    myprint()    
+    myprint(sparql_R)
+    ##########################################
     return sparql_R
 
 
@@ -1447,43 +1472,50 @@ def sparql_to_facts(sparql_query):
             factList:: A list of facts, each fact is a 3 element list of a tuple
             eg : [[(subject_lable,subject_uri),(predicate_lable,predicate_uri),(object_lable,object_uri)],[fact2],[fact3],...]
     """
-    if _trace:
-        print "====================="
-        print sparql_query
+    ##########################################
+    myprint("=====================")
+    myprint(sparql_query)
+    ##########################################
 
     sparql_result = data.query(sparql_query, format="json")
-    if _trace:
-        print "sparql result :: " +str(sparql_result)
+    #################################################
+    myprint("results obtained")
+    myprint("sparql result :: " +str(sparql_result))
+    #################################################
 
     j= _simplejson.loads(sparql_result)
-    #print "results obtained"
-    #print j
-    #print
+    ##########################################
+    myprint(j)
+    myprint()
+    ##########################################
+
     varList=j['head']['vars']
     bindingsList=j['results']['bindings']
-    if _trace:
-        print "BINDINGS LIST ::" + str(bindingsList)
+    ################################################
+    myprint("BINDINGS LIST ::" + str(bindingsList))
+    ################################################
 
     # check if sparql query returned a result
     if len(bindingsList) == 0:
         print "returning none"
         return None
+
     lol_sparql_query = _parse_query(sparql_query)
-    print "lol sparql query :: "
-    print lol_sparql_query
+    ################################################
+    myprint("lol sparql query :: " + str(lol_sparql_query))
+    ################################################
     
     #To obtain the list of triples without the predicates 
     # with "type" and "label" as fragments
     lol_filtered = _filter_predicates(lol_sparql_query)
-    print "lol filtered :: "+str(lol_filtered)
+    ################################################
+    myprint("lol filtered :: " + str(lol_filtered))
+    ################################################
 
     var_dict = _coll.defaultdict(str)
     for var in varList:
             var_dict[var] = str(var)
-    #print "args passed"
-    #print "\nvar dict:\n"+ str(var_dict)
-    #print "\nlol_filtered:\n"+ str(lol_filtered)
-    #print
+
     factList = _extract_facts(var_dict,bindingsList,lol_filtered,j)
     return factList
 
@@ -1506,7 +1538,6 @@ def conj_to_facts(conj_query):
 #############################################################################################################################
 
 
-_trace = True
 if __name__ == "__main__":
 
     '''
