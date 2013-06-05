@@ -2,6 +2,7 @@
     <h5 class="containertitle">Technopedia Facts:</h5>
     <ul class="unstyled resultlist" style="text-align:center;">
         {% for fact in facts %}
+        {% if fact.pred.uri != "http://www.w3.org/2000/01/rdf-schema#label"%}
         <li class="result">
             <div class="resulttitle">
                 <a class="node" href="{{fact.sub.uri}}">{{fact.sub.label}}</a>
@@ -11,6 +12,7 @@
                 <a class="node" href="{{fact.obj.uri}}">{{fact.obj.label}}</a>
             </div>
         </li>
+        {% endif %}
         {% endfor %}
     </ul>
     <div id="mindmap"></div>
@@ -19,7 +21,7 @@
         // Instantiate sigma.js and customize rendering :
         sigInst = sigma.init(document.getElementById('mindmap'))
             .drawingProperties({
-                defaultLabelColor: '#FFFF00',
+                defaultLabelColor: '#FFFF00',//'#000000',
                 defaultLabelSize: 12,
                 defaultLabelBGColor: '#fff',
                 defaultLabelHoverColor: '#000',
@@ -29,8 +31,8 @@
             .graphProperties({
                 minNodeSize: 3,
                 maxNodeSize: 5,
-                minEdgeSize: 1,
-                maxEdgeSize: 3
+                minEdgeSize: 4,
+                maxEdgeSize: 4
             })
             .mouseProperties({
                 maxRatio: 8

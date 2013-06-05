@@ -18,8 +18,7 @@ def suppressprint(f):
         pass
     return what
 
-
-_trace = True
+_trace = False
 
 @suppressprint
 def myprint(s=None):

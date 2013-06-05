@@ -56,13 +56,13 @@ def get_optimized_facts(q):
     return conj_query
 
 
-
-
 def get_facts(q):
     conj_query = get_optimized_facts(q)
     if conj_query is not None:
         sparql_query = kappa._get_sparql_query(conj_query)
         facts = kappa.sparql_to_facts(sparql_query)
+        if facts is None:
+            facts = [{"sub":{"label":"NO", "uri":""}, "pred":{"label":"RESULT", "uri":""}, "obj":{"label":"FOUND", "uri":""}}]
     else:
         sparql_queries = kappa.topk(q,3)
         facts = kappa.sparql_to_facts(sparql_queries[0])
