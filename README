@@ -1,7 +1,10 @@
-SEMANTIC WEB-BASED INTELLIGRNT TECHNICAL HELPDESK
-==================================================
+SEMANTIC WEB-BASED INTELLIGENT TECHNICAL HELPDESK
 
-@@@@@@@@  Under Construction @@@@@@@@
 
-You can contact me by mail: karthikprasad@engineer.com.
-You can also connect with me on Linkedin: www.linkedin.com/in/prasadkarthik
+Software and IT Engineers spend a considerable amount of time finding nuggets of relevant information in lengthy manuals, googling errors, and searching repositories to find ways to resolve dependencies. The application we created, accepts a user-specified keyword query, performs disambiguation, and returns relevant facts in RDF (Resource Description Framework) N-Quads format. We assimilated the factual knowledge base for this application into a Linked Open Dataset, named LOaD-IT .  We created this repository by crawling and ‘semanticizing’ unstructured technical manuals and filtering existing datasets. I co-authored the paper ‘Curating Linked Open Datasets for Software Engineering ,’ published at the International Semantic Web Conference (ISWC 2013). Future releases of the application can be greatly enhanced by implementing techniques from NLP. For example, factual answers to questions, instead of RDF Quads, can be provided to the user in response to free form queries.
+
+ 
+
+Visit http://54.213.4.161:8000 <moved> to try the application and http://www.iswc2013.semanticweb.org/content/demos/16 to read the paper. You can download the dataset from http://datahub.io/dataset/load-it
+
+You can contact us by mail: aparna.nagarajan26@gmail.com, apoorva.rao.b@gmail.com, karthikprasad@engineer.com.
